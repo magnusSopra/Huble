@@ -1,0 +1,191 @@
+/* public/css/styles.css */
+* { box-sizing: border-box; }
+body {
+  font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+  margin: 0;
+  background: #0f1420;
+  color: #e8ecf4;
+}
+header {
+  padding: 1rem 1.5rem;
+  background: #161d2e;
+  border-bottom: 1px solid #262f45;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+header h1 { font-size: 1.25rem; margin: 0; }
+header nav a {
+  color: #9db4ff;
+  text-decoration: none;
+  margin-left: 1rem;
+  font-size: 0.9rem;
+}
+main {
+  padding: 1.25rem;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+.card {
+  background: #161d2e;
+  border: 1px solid #262f45;
+  border-radius: 10px;
+  padding: 1rem;
+  margin-bottom: 1rem;
+}
+.grid {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(260px, 1fr);
+  gap: 1rem;
+  align-items: start;
+}
+@media (max-width: 860px) {
+  .grid { grid-template-columns: 1fr; }
+}
+.canvas-wrap {
+  width: 100%;
+  overflow: auto;
+  border-radius: 8px;
+  border: 1px solid #262f45;
+  background: #0b0f18;
+}
+canvas { display: block; max-width: 100%; cursor: crosshair; }
+button, input, select {
+  font: inherit;
+  color: inherit;
+}
+button {
+  background: #3b5bfd;
+  border: none;
+  color: white;
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 600;
+}
+button.secondary { background: #2a3350; }
+button.danger { background: #d1435b; }
+button:disabled { opacity: 0.5; cursor: not-allowed; }
+input, select {
+  background: #0b0f18;
+  border: 1px solid #333e5c;
+  border-radius: 6px;
+  padding: 0.45rem 0.6rem;
+}
+.mode-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 1rem;
+}
+.mode-card {
+  cursor: pointer;
+  transition: transform 0.1s, border-color 0.1s;
+}
+.mode-card:hover { transform: translateY(-2px); border-color: #3b5bfd; }
+.mode-card h3 { margin: 0 0 0.4rem; }
+.mode-card p { margin: 0; color: #a9b4cc; font-size: 0.9rem; }
+table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+th, td { text-align: left; padding: 0.4rem 0.5rem; border-bottom: 1px solid #262f45; }
+.pill {
+  display: inline-block;
+  padding: 0.15rem 0.5rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  background: #2a3350;
+}
+.feedback-item {
+  border: 1px solid #262f45;
+  border-radius: 8px;
+  padding: 0.5rem 0.7rem;
+  margin-bottom: 0.5rem;
+}
+.feedback-item.correct { border-color: #33c17a; background: rgba(51,193,122,0.1); }
+.feedback-item .direction { font-size: 1.4rem; }
+.room-list-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.4rem 0;
+  border-bottom: 1px solid #262f45;
+  gap: 0.5rem;
+  cursor: pointer;
+}
+.room-list-item:hover { background: rgba(59,91,253,0.08); }
+.room-list-item .actions button { padding: 0.25rem 0.5rem; font-size: 0.8rem; }
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(5,8,15,0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+}
+.modal {
+  width: 100%;
+  max-width: 360px;
+  margin: 1rem;
+}
+.modal .actions {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: flex-end;
+  margin-top: 0.75rem;
+}
+.modal input[type="number"] { width: 100%; }
+.modal input[type="text"] { width: 100%; }
+.muted { color: #a9b4cc; font-size: 0.9rem; }
+.win-banner {
+  background: linear-gradient(135deg, #33c17a, #3b5bfd);
+  padding: 1rem;
+  border-radius: 10px;
+  text-align: center;
+  font-weight: 700;
+  margin-bottom: 1rem;
+}
+.app-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+  gap: 1.5rem;
+  max-width: 700px;
+  margin: 1rem auto;
+  padding: 0 1rem;
+}
+.app-icon-tile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  text-decoration: none;
+  color: inherit;
+  cursor: pointer;
+}
+.app-icon {
+  width: 84px;
+  height: 84px;
+  border-radius: 20px;
+  background: linear-gradient(160deg, #3b5bfd, #2a3350);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2.4rem;
+  box-shadow: 0 4px 14px rgba(0,0,0,0.35);
+  transition: transform 0.1s;
+}
+.app-icon-tile:hover .app-icon { transform: translateY(-3px) scale(1.03); }
+.app-label {
+  font-size: 0.85rem;
+  color: #e8ecf4;
+  text-align: center;
+}
+.app-icon-tile.disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+.app-icon-tile.disabled .app-icon {
+  background: #2a3350;
+  box-shadow: none;
+}
+.app-icon-tile.disabled:hover .app-icon { transform: none; }

@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Kontorle — Guess the Room</title>
+<link rel="stylesheet" href="/css/styles.css" />
+</head>
+<body>
+<header>
+  <h1 id="mode-title">🔁 Practice Globle</h1>
+  <nav><a href="/kontorle.html">← Back</a></nav>
+</header>
+<main>
+
+  <div class="card" id="name-card">
+    <label>Your name<br /><input type="text" id="player-name" placeholder="e.g. Jamie" maxlength="40" /></label>
+    <button id="start-btn" style="margin-left:0.5rem;">Start</button>
+  </div>
+
+  <div id="game-area" style="display:none;">
+    <div id="win-banner" class="win-banner" style="display:none;"></div>
+    <div class="grid">
+      <div class="card">
+        <p class="muted"><span id="canvas-instructions">Click a room on the map to guess.</span> <span id="attempts-label"></span></p>
+        <form id="name-guess-form" style="display:none; margin-bottom:0.75rem;">
+          <label>Room name<br />
+            <input type="text" id="name-guess-input" placeholder="Type the exact room name" autocomplete="off" />
+          </label>
+          <button type="submit" style="margin-left:0.5rem;">Guess</button>
+          <span id="name-guess-error" class="muted" style="display:block; margin-top:0.4rem;"></span>
+        </form>
+        <div class="canvas-wrap"><canvas id="canvas"></canvas></div>
+      </div>
+      <div class="card">
+        <h3>Guesses</h3>
+        <div id="feedback-list"></div>
+      </div>
+    </div>
+  </div>
+
+</main>
+<script src="/js/api.js"></script>
+<script src="/js/map-renderer.js"></script>
+<script src="/js/leaderboard.js"></script>
+<script src="/js/game-globle.js"></script>
+</body>
+</html>

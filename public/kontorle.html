@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Kontorle</title>
+<link rel="stylesheet" href="/css/styles.css" />
+</head>
+<body>
+<header>
+  <h1>🏢 Kontorle</h1>
+  <nav><a href="/">← Back to Huble</a> <a href="/admin.html">Admin: edit floor plan</a></nav>
+</header>
+<main>
+
+  <div class="card">
+    <label>Floor<br />
+      <select id="floor-select"></select>
+    </label>
+  </div>
+
+  <div class="card" id="no-rooms-warning" style="display:none;">
+    <p class="muted">This floor has no rooms yet. Go to <a href="/admin.html">Admin</a> to trace some rooms first.</p>
+  </div>
+
+  <div class="mode-grid" id="mode-grid">
+    <div class="card mode-card" data-mode="daily">
+      <h3>📅 Daily Challenge</h3>
+      <p>One mystery room per day, same for the whole office. Guess it with the fewest tries.</p>
+    </div>
+    <div class="card mode-card" data-mode="daily_expert">
+      <h3>🧠 Expert Daily</h3>
+      <p>Same daily-style challenge, but type the room's name instead of clicking the map. No autocomplete!</p>
+    </div>
+    <div class="card mode-card" data-mode="globle">
+      <h3>🔁 Practice Globle</h3>
+      <p>Unlimited random mystery room. Use direction, category, and capacity hints to find it.</p>
+    </div>
+    <div class="card mode-card" data-mode="name_to_location">
+      <h3>📍 Name the Rooms</h3>
+      <p>We show a room name — click it on the map. Repeat until every room is found.</p>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>🏆 Leaderboard</h3>
+    <div style="margin-bottom:0.6rem;">
+      <select id="leaderboard-mode">
+        <option value="daily">Daily Challenge</option>
+        <option value="daily_expert">Expert Daily</option>
+        <option value="globle">Practice Globle</option>
+        <option value="name_to_location">Name the Rooms</option>
+      </select>
+    </div>
+    <table>
+      <thead><tr><th>#</th><th>Player</th><th>Attempts</th><th>Time</th></tr></thead>
+      <tbody id="leaderboard-body"></tbody>
+    </table>
+  </div>
+
+</main>
+<script src="/js/api.js"></script>
+<script src="/js/map-renderer.js"></script>
+<script src="/js/leaderboard.js"></script>
+<script src="/js/main.js"></script>
+</body>
+</html>

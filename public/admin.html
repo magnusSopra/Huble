@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Kontorle — Admin</title>
+<link rel="stylesheet" href="/css/styles.css" />
+</head>
+<body>
+<header>
+  <h1>🗺️ Kontorle — Admin</h1>
+  <nav><a href="/kontorle.html">← Back to game</a></nav>
+</header>
+<main>
+
+  <div class="card">
+    <h3>1. Upload a floor plan</h3>
+    <form id="upload-form">
+      <p>
+        <label>Floor name<br /><input type="text" id="floor-name" placeholder="e.g. 3rd Floor" required /></label>
+      </p>
+      <p>
+        <label>Image file (PNG/JPG)<br /><input type="file" id="floor-image" accept="image/*" required /></label>
+      </p>
+      <button type="submit">Upload floor plan</button>
+    </form>
+  </div>
+
+  <div class="card">
+    <h3>2. Choose a floor to edit</h3>
+    <select id="floor-select"></select>
+    <button id="delete-floor-btn" class="danger" style="margin-left:0.5rem;">Delete this floor</button>
+  </div>
+
+  <div class="grid" id="editor" style="display:none;">
+    <div class="card">
+      <h3>3. Trace rooms</h3>
+      <p class="muted">Click points around a room's outline (at least 3), then click "Finish room" to save. Click "Cancel" to discard.</p>
+      <div style="margin-bottom:0.6rem;">
+        <button id="start-trace-btn">+ New room</button>
+        <button id="finish-trace-btn" class="secondary" disabled>Finish room</button>
+        <button id="cancel-trace-btn" class="secondary" disabled>Cancel</button>
+        <button id="undo-point-btn" class="secondary" disabled>Undo point</button>
+      </div>
+      <div class="canvas-wrap"><canvas id="canvas"></canvas></div>
+    </div>
+    <div class="card">
+      <h3>Rooms (<span id="room-count">0</span>)</h3>
+      <div id="room-list"></div>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="edit-room-modal" style="display:none;">
+    <div class="modal card">
+      <h3>Edit room</h3>
+      <p class="muted" id="edit-room-name"></p>
+      <p>
+        <label>Category<br />
+          <input type="text" id="edit-room-category" list="category-suggestions" placeholder="e.g. meeting room, kitchen" />
+        </label>
+      </p>
+      <datalist id="category-suggestions">
+        <option value="meeting room"></option>
+        <option value="kitchen"></option>
+        <option value="office"></option>
+        <option value="focus room"></option>
+        <option value="storage"></option>
+        <option value="lounge"></option>
+      </datalist>
+      <p id="edit-room-capacity-wrap">
+        <label>Capacity (people)<br />
+          <input type="number" id="edit-room-capacity" min="1" step="1" />
+        </label>
+      </p>
+      <div class="actions">
+        <button id="edit-room-save-btn">Save</button>
+        <button id="edit-room-cancel-btn" class="secondary">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+</main>
+<script src="/js/api.js"></script>
+<script src="/js/map-renderer.js"></script>
+<script src="/js/admin.js"></script>
+</body>
+</html>

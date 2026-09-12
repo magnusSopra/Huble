@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Kontorle — Name the Rooms</title>
+<link rel="stylesheet" href="/css/styles.css" />
+</head>
+<body>
+<header>
+  <h1>📍 Name the Rooms</h1>
+  <nav><a href="/kontorle.html">← Back</a></nav>
+</header>
+<main>
+
+  <div class="card" id="name-card">
+    <label>Your name<br /><input type="text" id="player-name" placeholder="e.g. Jamie" maxlength="40" /></label>
+    <button id="start-btn" style="margin-left:0.5rem;">Start</button>
+  </div>
+
+  <div id="game-area" style="display:none;">
+    <div id="win-banner" class="win-banner" style="display:none;"></div>
+    <div class="card">
+      <p class="muted">Find: <strong id="target-name">—</strong></p>
+      <p class="muted"><span id="progress-label"></span> · <span id="mistakes-label"></span></p>
+    </div>
+    <div class="card">
+      <div class="canvas-wrap"><canvas id="canvas"></canvas></div>
+    </div>
+  </div>
+
+</main>
+<script src="/js/api.js"></script>
+<script src="/js/map-renderer.js"></script>
+<script src="/js/leaderboard.js"></script>
+<script src="/js/game-name-to-location.js"></script>
+</body>
+</html>
