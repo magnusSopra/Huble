@@ -1,0 +1,27 @@
+{
+  "Iteam": {
+    "location": "Oslo, Norway",
+    "basis": "registered-office",
+    "source": "https://data.brreg.no/enhetsregisteret/api/enheter/923456317"
+  },
+  "Fjellsport": {
+    "location": "Sandefjord, Norway",
+    "basis": "registered-office",
+    "source": "https://data.brreg.no/enhetsregisteret/api/enheter/989710338"
+  },
+  "Pearl Group": {
+    "location": "Lysaker, Norway",
+    "basis": "registered-office",
+    "source": "https://data.brreg.no/enhetsregisteret/api/enheter/989536672"
+  },
+  "Skygard": {
+    "location": "Oslo, Norway",
+    "basis": "office",
+    "source": "https://www.skygard.no/"
+  },
+  "SalMar": {
+    "location": "Kverva, Norway",
+    "basis": "headquarters",
+    "source": "https://www.salmar.no/kontakt-og-presse/kontaktinfo/"
+  }
+}

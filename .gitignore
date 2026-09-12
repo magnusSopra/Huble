@@ -6,3 +6,7 @@ data/*.db-shm
 public/uploads/*
 !public/uploads/.gitkeep
 *.log
+
+# Kundle (games/kundle) build scratch — built output is committed under public/kundle/ instead
+games/kundle/dist/
+games/kundle/node_modules/.tmp/

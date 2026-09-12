@@ -1,10 +1,11 @@
 # Huble
 
 Huble is a hub for a small collection of office games. It currently hosts
-one game, with more on the way:
+two games, with more on the way:
 
 - **🏢 [Kontorle](#kontorle)** — a [Globle](https://globle-game.com/)-style
   guessing game built around your office floor plan.
+- **🧩 [Kundle](#kundle)** — a daily client/company guessing game.
 - More games coming soon.
 
 Open **http://localhost:3000** for the Huble hub (an iPad-style home
@@ -24,6 +25,34 @@ Upload your office floor plan, trace each room, then play:
 Shared leaderboards (ranked by fewest guesses, then fastest time) are kept
 per mode in a local SQLite database — no login required, just a display
 name.
+
+## Kundle
+
+A daily guessing game for Sopra Steria client companies — guess the
+mystery client and get colour-coded clues (employees, Sopra staff count,
+client-since year, HQ distance/direction, similarity, operating
+footprint). Fully self-contained, static, client-side (no server API):
+the daily target and leaderboard are computed/stored in the browser
+(`localStorage`).
+
+Source lives in `games/kundle/` (its own Vite + React + TypeScript
+project, pulled from
+[BhagavathAchani/Kundle](https://github.com/BhagavathAchani/Kundle)) and
+is built to static assets that are committed under `public/kundle/`, so
+Express serves it at `/kundle/` alongside the rest of the site — no extra
+server code needed. To rebuild after pulling upstream changes:
+
+```powershell
+cd games/kundle
+npm install
+npm run build
+# then copy the output into public/kundle/, e.g.:
+Remove-Item -Recurse -Force ..\..\public\kundle
+Copy-Item -Recurse dist ..\..\public\kundle
+```
+
+`games/kundle/vite.config.ts` sets `base: '/kundle/'` so built asset paths
+resolve correctly under that subpath instead of the site root.
 
 ## Requirements
 
@@ -74,6 +103,10 @@ public/
   game.html      Globle-style guessing UI (daily + practice)
   name.html      "Name the Rooms" UI
   js/, css/      Frontend logic and styles (vanilla JS, canvas-based)
+  kundle/        Built Kundle static assets (served at /kundle/, do not edit
+                 directly — rebuild from games/kundle/ instead)
+games/
+  kundle/        Kundle source project (Vite + React + TypeScript)
 data/            SQLite database file (gitignored)
 ```
 
