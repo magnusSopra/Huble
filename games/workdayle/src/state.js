@@ -21,6 +21,7 @@ export class GameState {
     this.elapsed = saved?.elapsed ?? 0;
     this.bossesDefeated = saved?.bossesDefeated ?? 0;
     this.legacy = saved?.legacy ?? false;
+    this.introSeen = saved?.introSeen ?? Boolean(saved);
     this.complete = this.rank === TITLES.length - 1;
     this.result = saved?.result ? makeResult(saved.result) : this.complete ? finalResult(this) : null;
   }
@@ -73,6 +74,7 @@ export class GameState {
       completed: [...this.completed], energy: this.energy, bathroom: this.bathroom,
       position: { ...this.position }, elapsed: this.elapsed,
       bossesDefeated: this.bossesDefeated, legacy: this.legacy, result: this.result,
+      introSeen: this.introSeen,
       collectibles: [...this.collectibles], officeLife: structuredClone(this.officeLife),
     };
   }
@@ -105,6 +107,7 @@ export function parseSave(text) {
   }
   if (!Number.isInteger(saved.bossesDefeated) || !numberIn(saved.bossesDefeated, 0, lastRank)
     || typeof saved.legacy !== 'boolean') throw new Error('Invalid career record.');
+  if (saved.introSeen !== undefined && typeof saved.introSeen !== 'boolean') throw new Error('Invalid intro state.');
   if (saved.bossesDefeated !== saved.rank && !(saved.legacy && saved.rank === 4 && saved.bossesDefeated === 3)) {
     throw new Error('The promotion history does not match this career.');
   }

@@ -1,3 +1,5 @@
+import { randomInt, shuffleArray } from './rng.js';
+
 const meeting = (label) => ({
   label, duration: 30, total: 8,
   instructions: 'Scroll DOWN on the reel cue and nod at “Any thoughts?” in the SAME round, three times. Twice, an NPC asks you a direct question: STOP scrolling and choose the reply matching the green hint within 4 seconds. Wrong or late replies cost time; try again. Then resume both tabs.',
@@ -68,6 +70,11 @@ const AI_PROVIDERS = ['ChatGPT', 'Claude', 'Sonnet'];
 const html = value => String(value ?? '').replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[char]);
 const primary = (action, text, extra = '') => `<button type="button" class="mg-button mg-primary mg-wide" data-action="${action}" ${extra}>${text}</button>`;
 const person = '<span class="mg-walker-head"></span><span class="mg-walker-body"></span><span class="mg-walker-leg mg-leg-left"></span><span class="mg-walker-leg mg-leg-right"></span>';
+const shufflePrompt = (item) => {
+  const answers = item.answers.map((answer, index) => ({ answer, index }));
+  const shuffled = shuffleArray(answers);
+  return { ...item, answers: shuffled.map(option => option.answer), correct: shuffled.findIndex(option => option.index === item.correct) };
+};
 
 // Like the office extension, this shares the host's timer, retries and reward lifecycle.
 export function createMultitaskMiniGame(BaseMiniGame) {
@@ -86,7 +93,7 @@ export function createMultitaskMiniGame(BaseMiniGame) {
         if (this.task.type === 'dodge-meeting') this.paintDodge();
         else if (this.task.type === 'cv-ai' && this.aiPhase === 'ready') {
           this.provider = this.root.querySelector('[data-input="ai-provider"]').value;
-          this.root.querySelector('[data-action="ask-cv"]').disabled = !AI_PROVIDERS.includes(this.provider);
+          this.root.querySelector('[data-action="ask-cv"]').disabled = !this.aiProviders.includes(this.provider);
         }
       };
       this.root.addEventListener('change', this.changeListener);
@@ -100,6 +107,14 @@ export function createMultitaskMiniGame(BaseMiniGame) {
 
     start() {
       if (this.disposed || this.settled || !['ready', 'failed'].includes(this.state)) return;
+      this.questions = shuffleArray(QUESTIONS.map(shufflePrompt));
+      this.jobs = shuffleArray(JOBS.map(job => ({ ...job })));
+      this.reelOffset = randomInt(0, REELS.length - 1);
+      this.aiProviders = shuffleArray(AI_PROVIDERS);
+      this.excuses = shuffleArray([
+        { value: 'client', label: 'Client deadline today. I’ll send written input.', hotkey: 1 },
+        { value: 'moon', label: 'The moon has booked my calendar for cheese research.', hotkey: 2 },
+      ]).map((item, index) => ({ ...item, hotkey: index + 1 }));
       this.nodded = new Set();
       this.scrolled = new Set();
       this.missed = new Set();
@@ -141,11 +156,11 @@ export function createMultitaskMiniGame(BaseMiniGame) {
     }
 
     paintReel(index, cue) {
-      const reel = REELS[index % REELS.length];
+      const reel = REELS[(index + this.reelOffset) % REELS.length];
       const picture = this.root.querySelector('.mg-reel-picture');
-      if (picture.dataset.index !== String(index % REELS.length)) {
-        picture.dataset.index = String(index % REELS.length);
-        picture.innerHTML = `<svg viewBox="0 0 180 100">${REEL_ART[index % REELS.length]}</svg>`;
+      if (picture.dataset.index !== String((index + this.reelOffset) % REELS.length)) {
+        picture.dataset.index = String((index + this.reelOffset) % REELS.length);
+        picture.innerHTML = `<svg viewBox="0 0 180 100">${REEL_ART[(index + this.reelOffset) % REELS.length]}</svg>`;
       }
       picture.style.setProperty('--reel-bob', `${Math.sin(this.elapsed * 5) * 3}px`);
       picture.style.setProperty('--reel-flap', `${Math.sin(this.elapsed * 7) * 8}deg`);
@@ -175,14 +190,14 @@ export function createMultitaskMiniGame(BaseMiniGame) {
       this.root.querySelector('.mg-avatar').classList.toggle('mg-is-nodding', this.elapsed < this.nodTime);
       this.paintReel(cycle + Number(scrolled), this.questionActive ? 'PAUSED · answer your colleague first' : scrolled ? 'REEL SAVED ✓ · next round soon' : scroll ? 'SCROLL DOWN NOW ↓' : phase < 1.2 ? 'READ FIRST · scroll cue coming…' : 'WAIT · next reel window soon');
       const rounds = [...this.nodded].filter(round => this.scrolled.has(round)).length;
-      this.root.querySelector('.mg-attention-score').textContent = `Multitasked rounds ${rounds}/3 · This round: ${nodded ? 'nod ✓' : 'nod —'} / ${scrolled ? 'reel ✓' : 'reel —'} · Questions ${this.questionIndex}/2 · Suspicion ${this.suspicion}`;
+      this.root.querySelector('.mg-attention-score').textContent = `Multitasked rounds ${rounds}/3 · This round: ${nodded ? 'nod ✓' : 'nod —'} / ${scrolled ? 'reel ✓' : 'reel —'} · Questions ${this.questionIndex}/${this.questions.length} · Suspicion ${this.suspicion}`;
       if (this.questionActive) this.root.querySelector('.mg-question-time').textContent = `${Math.ceil(this.questionRemaining)}s to reply · hints below`;
     }
 
     showQuestion() {
       this.questionActive = true;
       this.questionRemaining = 4;
-      const question = QUESTIONS[this.questionIndex];
+      const question = this.questions[this.questionIndex];
       const panel = this.root.querySelector('.mg-direct-question');
       panel.hidden = false;
       panel.innerHTML = `<h4>${question.speaker}: “${question.prompt}”</h4><span class="mg-question-time" role="status"></span><p class="mg-note"><span>STOP SCROLLING · YOUR REPLY SHOULD</span>${question.hint}</p><div class="mg-answers">${question.answers.map((answer, index) => `<button type="button" class="mg-choice" data-action="answer-question" data-value="${index}"><kbd>${index + 1}</kbd><span>${answer}</span></button>`).join('')}</div>`;
@@ -201,7 +216,7 @@ export function createMultitaskMiniGame(BaseMiniGame) {
       if (this.questionActive) {
         if (action === 'answer-question' && this.cooldown === 0 && /^[0-2]$/.test(String(value))) {
           this.cooldown = .35;
-          const question = QUESTIONS[this.questionIndex];
+          const question = this.questions[this.questionIndex];
           if (Number(value) !== question.correct) return this.mistake(`Try again: ${question.hint} −0.75s`, .75);
           this.questionIndex++;
           this.questionActive = false;
@@ -298,7 +313,7 @@ export function createMultitaskMiniGame(BaseMiniGame) {
     }
 
     renderDelegation() {
-      const job = JOBS[this.progress];
+      const job = this.jobs[this.progress];
       this.stage.innerHTML = `<div class="mg-job-brief"><span>JOB ${this.progress + 1}/2</span><h4>${job.title}</h4><p>${job.hint}</p></div><div class="mg-staff-list">${STAFF.map((staff, index) => `<button type="button" class="mg-choice" data-action="employee" data-value="${index}" aria-pressed="${this.selected === index}"><kbd>${index + 1}</kbd><span><strong>${staff.name}</strong><small>${staff.skill}</small></span></button>`).join('')}</div>${primary('delegate-work', 'DELEGATE → <kbd>D</kbd>')}<p class="mg-delegate-status" role="status">Select expertise, not whoever looks least busy.</p><div class="mg-departure-scene" aria-label="Selected employee heading off to work" hidden><div class="mg-walker" role="img" aria-label="Employee walking to the job">${person}</div><span class="mg-job-door">TO WORK →</span></div>`;
       this.setFeedback('Pick the right expertise, then explicitly delegate the job.');
     }
@@ -311,7 +326,7 @@ export function createMultitaskMiniGame(BaseMiniGame) {
         this.root.querySelector('.mg-delegate-status').textContent = `${STAFF[this.selected].name} selected. Press DELEGATE to assign.`;
       } else if (action === 'delegate-work') {
         if (this.selected === null) return this.setFeedback('Choose an employee first. “Everyone” is not an employee.');
-        if (this.selected !== JOBS[this.progress].expert) {
+        if (this.selected !== this.jobs[this.progress].expert) {
           const complaint = STAFF[this.selected].complaint;
           this.root.querySelector('.mg-delegate-status').textContent = complaint;
           return this.mistake(`${complaint} Reassign the job. −1.5s`, 1.5);
@@ -334,7 +349,7 @@ export function createMultitaskMiniGame(BaseMiniGame) {
     }
 
     renderDodge() {
-      this.stage.innerHTML = `<div class="mg-job-brief"><span>CALENDAR INVITE · 47 MINUTES</span><h4>Pre-alignment alignment catch-up</h4><p>Agenda: decide the agenda for the next meeting.</p></div><p class="mg-note"><span>PLAUSIBLE ESCAPE ROUTE</span>You have a client deadline today. Mark unavailable and offer written input instead.</p><label class="mg-native-option"><input type="checkbox" data-input="unavailable"> Mark me unavailable <kbd>U</kbd></label><fieldset class="mg-excuses"><legend>Choose your excuse</legend><label class="mg-native-option"><input type="radio" name="meeting-excuse" value="client" data-input="excuse"><span><kbd>1</kbd> Client deadline today. I’ll send written input.</span></label><label class="mg-native-option"><input type="radio" name="meeting-excuse" value="moon" data-input="excuse"><span><kbd>2</kbd> The moon has booked my calendar for cheese research.</span></label></fieldset>${primary('send-excuse', 'SEND polite decline <kbd>S</kbd>')}<p class="mg-dodge-status" role="status">Set your availability, then select a believable excuse.</p>`;
+      this.stage.innerHTML = `<div class="mg-job-brief"><span>CALENDAR INVITE · 47 MINUTES</span><h4>Pre-alignment alignment catch-up</h4><p>Agenda: decide the agenda for the next meeting.</p></div><p class="mg-note"><span>PLAUSIBLE ESCAPE ROUTE</span>You have a client deadline today. Mark unavailable and offer written input instead.</p><label class="mg-native-option"><input type="checkbox" data-input="unavailable"> Mark me unavailable <kbd>U</kbd></label><fieldset class="mg-excuses"><legend>Choose your excuse</legend>${this.excuses.map(item => `<label class="mg-native-option"><input type="radio" name="meeting-excuse" value="${item.value}" data-input="excuse"><span><kbd>${item.hotkey}</kbd> ${item.label}</span></label>`).join('')}</fieldset>${primary('send-excuse', 'SEND polite decline <kbd>S</kbd>')}<p class="mg-dodge-status" role="status">Set your availability, then select a believable excuse.</p>`;
       this.setFeedback('Avoid 47 minutes of saying “you’re on mute”. Read the green hint.');
     }
 
@@ -368,14 +383,14 @@ export function createMultitaskMiniGame(BaseMiniGame) {
 
     renderCVAi() {
       const ready = this.aiPhase === 'ready', output = this.aiPhase === 'output';
-      this.stage.innerHTML = `<div class="mg-ai-console"><span>LOCAL CV DRAFT · NO UPLOAD OR API</span><h4>Turn “did some work” into executive potential.</h4>${ready ? `<label class="mg-provider">Choose your fictional assistant<select data-input="ai-provider"><option value="">Choose an assistant…</option>${AI_PROVIDERS.map(provider => `<option>${provider}</option>`).join('')}</select></label>` : `<p>Assistant: <strong>${html(this.provider)}</strong> · fictional demo</p>`}<div class="mg-cv-comparison"><section><h4>BEFORE</h4><p>Made a spreadsheet. Helped with meetings. Occasionally found the printer.</p></section>${output ? '<section class="mg-cv-after"><h4>AFTER</h4><p>Architected a cell-based decision ecosystem. Orchestrated cross-functional nodding. Pioneered toner-location intelligence.</p></section>' : ''}</div>${this.aiPhase === 'processing' ? '<p class="mg-ai-processing" role="status">Processing… inflating three bullet points into a leadership journey.</p><div class="mg-ai-processing-meter"><span></span></div>' : output ? '<p class="mg-cv-status" role="status">CV POLISHED ✓ · buzzword density +400%</p><p class="mg-ai-warning">Fictional draft, not verified experience. Review the facts before sharing.</p>' : ''}</div>${output ? primary('file-cv', 'File CV draft for human review <kbd>F</kbd>') : primary('ask-cv', ready ? 'ASK AI TO FIX IT <kbd>A</kbd>' : 'FIXING…', 'disabled')}`;
+      this.stage.innerHTML = `<div class="mg-ai-console"><span>LOCAL CV DRAFT · NO UPLOAD OR API</span><h4>Turn “did some work” into executive potential.</h4>${ready ? `<label class="mg-provider">Choose your fictional assistant<select data-input="ai-provider"><option value="">Choose an assistant…</option>${this.aiProviders.map(provider => `<option>${provider}</option>`).join('')}</select></label>` : `<p>Assistant: <strong>${html(this.provider)}</strong> · fictional demo</p>`}<div class="mg-cv-comparison"><section><h4>BEFORE</h4><p>Made a spreadsheet. Helped with meetings. Occasionally found the printer.</p></section>${output ? '<section class="mg-cv-after"><h4>AFTER</h4><p>Architected a cell-based decision ecosystem. Orchestrated cross-functional nodding. Pioneered toner-location intelligence.</p></section>' : ''}</div>${this.aiPhase === 'processing' ? '<p class="mg-ai-processing" role="status">Processing… inflating three bullet points into a leadership journey.</p><div class="mg-ai-processing-meter"><span></span></div>' : output ? '<p class="mg-cv-status" role="status">CV POLISHED ✓ · buzzword density +400%</p><p class="mg-ai-warning">Fictional draft, not verified experience. Review the facts before sharing.</p>' : ''}</div>${output ? primary('file-cv', 'File CV draft for human review <kbd>F</kbd>') : primary('ask-cv', ready ? 'ASK AI TO FIX IT <kbd>A</kbd>' : 'FIXING…', 'disabled')}`;
       this.setFeedback(output ? 'Green status is not a qualification. Explicitly file the draft to finish.' : 'Select an assistant. No real CV, service, or account is used.');
     }
 
     cvAction(action) {
       if (action === 'ask-cv' && this.aiPhase === 'ready') {
         this.provider = this.root.querySelector('[data-input="ai-provider"]').value;
-        if (!AI_PROVIDERS.includes(this.provider)) return this.setFeedback('Choose ChatGPT, Claude or Sonnet first.');
+        if (!this.aiProviders.includes(this.provider)) return this.setFeedback('Choose ChatGPT, Claude or Sonnet first.');
         this.aiPhase = 'processing';
         this.aiStarted = this.elapsed;
         this.renderCVAi();
@@ -445,7 +460,7 @@ export function createMultitaskMiniGame(BaseMiniGame) {
           if (this.questionRemaining <= 0) {
             this.questionRemaining = 4;
             this.suspicion++;
-            this.mistake(`Reply overdue. −1.5s. Try now: ${QUESTIONS[this.questionIndex].hint}`, 1.5);
+            this.mistake(`Reply overdue. −1.5s. Try now: ${this.questions[this.questionIndex].hint}`, 1.5);
             if (this.state !== 'playing') return;
           }
           this.paintMeeting();
@@ -453,7 +468,7 @@ export function createMultitaskMiniGame(BaseMiniGame) {
         }
         const meetingBefore = this.meetingTime;
         const questionAt = (this.questionIndex + 1) * 4.8;
-        this.meetingTime = this.questionIndex < QUESTIONS.length ? Math.min(this.meetingTime + dt, questionAt) : this.meetingTime + dt;
+        this.meetingTime = this.questionIndex < this.questions.length ? Math.min(this.meetingTime + dt, questionAt) : this.meetingTime + dt;
         for (let cycle = Math.floor(meetingBefore / 4.8); cycle * 4.8 + 3.8 < this.meetingTime; cycle++) {
           if (!this.missed.has(cycle) && !this.nodded.has(cycle)) {
             this.missed.add(cycle);
@@ -461,7 +476,7 @@ export function createMultitaskMiniGame(BaseMiniGame) {
             if (this.state !== 'playing') return;
           }
         }
-        if (this.questionIndex < QUESTIONS.length && this.meetingTime >= questionAt) this.showQuestion();
+        if (this.questionIndex < this.questions.length && this.meetingTime >= questionAt) this.showQuestion();
         else this.paintMeeting();
       } else if (type === 'phone') {
         const cycle = Math.floor(this.elapsed / 7);

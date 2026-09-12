@@ -1,5 +1,6 @@
 import { OFFICE_GAMES, createOfficeMiniGame, NEW_TYPES } from './office-minigames.js';
 import { MULTITASK_GAMES, MULTITASK_TYPES, createMultitaskMiniGame } from './multitask-minigames.js';
+import { shuffleArray } from './rng.js';
 import './multitask-minigames.css';
 
 export { NEW_TYPES } from './office-minigames.js';
@@ -64,6 +65,16 @@ const REQUESTS = [
 ];
 
 const escapeHTML = (value) => String(value ?? '').replace(/[&<>"']/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[char]);
+const shufflePrompt = (item) => {
+  const answers = item.answers.map((answer, index) => ({ answer, index }));
+  const shuffled = shuffleArray(answers);
+  return {
+    ...item,
+    answers: shuffled.map(option => option.answer),
+    correct: shuffled.findIndex(option => option.index === item.correct),
+  };
+};
+const formatPenalty = (seconds) => `${Number(seconds).toFixed(seconds % 1 ? 2 : 0).replace(/\.?0+$/, '')} SECOND${seconds === 1 ? '' : 'S'}`;
 
 const cupGraphic = () => `<div class="mg-coffee-art" aria-hidden="true">
   <svg viewBox="0 0 240 164" class="mg-cup-svg">
@@ -159,13 +170,20 @@ export class MiniGame {
     this.lastNodCycle = -1;
     this.meetingWindow = null;
     this.nodTime = 0;
-    this.password = '2413';
+    this.sequenceOptions = SEQUENCES[this.task.type]
+      ? shuffleArray(SEQUENCES[this.task.type].labels.map((label, original) => ({ label, original })))
+      : null;
+    this.dialogues = DIALOGUES[this.task.type]?.map(shufflePrompt) || null;
+    this.sqlSteps = this.task.type === 'sql' ? SQL_STEPS.map(shufflePrompt) : null;
+    this.password = shuffleArray(['1', '2', '3', '4']).join('');
+    this.requests = this.task.type === 'deadline' ? shuffleArray(REQUESTS) : null;
     this.entered = '';
     this.memoryUntil = 3.5;
     this.memoryVisible = true;
     this.sequenceDone = [];
     this.root.classList.remove('mg-is-failed', 'mg-is-success');
     this.root.classList.add('mg-is-playing');
+    this.root.classList.remove('mg-penalty-flash');
     this.root.querySelector('.mg-clock').classList.remove('mg-clock-urgent');
     this.renderGame();
     this.syncReadouts();
@@ -210,12 +228,12 @@ export class MiniGame {
     } else {
       graphic = `<div class="mg-document"><div class="mg-document-title">The actually useful guide</div>${sequence.done.map((text, i) => `<div class="mg-document-line ${i < this.progress ? 'mg-line-done' : ''}"><span>${i < this.progress ? '✓' : String(i + 1).padStart(2, '0')}</span>${escapeHTML(text)}</div>`).join('')}</div>`;
     }
-    this.stage.innerHTML = `${graphic}<p class="mg-note"><span>FOLLOW THIS ORDER</span>${escapeHTML(sequence.note)}</p><div class="mg-choice-grid">${sequence.labels.map((label, i) => `<button type="button" class="mg-choice ${this.sequenceDone.includes(sequence.order.indexOf(i)) ? 'mg-choice-done' : ''}" data-action="choose" data-value="${i}" ${this.sequenceDone.includes(sequence.order.indexOf(i)) ? 'disabled' : ''}><kbd>${i + 1}</kbd><span>${escapeHTML(label)}</span>${this.sequenceDone.includes(sequence.order.indexOf(i)) ? '<span aria-label="Completed">✓</span>' : ''}</button>`).join('')}</div>`;
+    this.stage.innerHTML = `${graphic}<p class="mg-note"><span>FOLLOW THIS ORDER</span>${escapeHTML(sequence.note)}</p><div class="mg-choice-grid">${this.sequenceOptions.map((option, i) => `<button type="button" class="mg-choice ${this.sequenceDone.includes(option.original) ? 'mg-choice-done' : ''}" data-action="choose" data-value="${option.original}" ${this.sequenceDone.includes(option.original) ? 'disabled' : ''}><kbd>${i + 1}</kbd><span>${escapeHTML(option.label)}</span>${this.sequenceDone.includes(option.original) ? '<span aria-label="Completed">✓</span>' : ''}</button>`).join('')}</div>`;
     this.setFeedback(sequence.steps[this.progress]);
   }
 
   renderDialogue() {
-    const question = DIALOGUES[this.task.type][this.progress];
+    const question = this.dialogues[this.progress];
     this.stage.innerHTML = `<div class="mg-message"><div class="mg-message-heading"><span class="mg-message-avatar" aria-hidden="true">${question.from.charAt(0)}</span><span>${escapeHTML(question.from)}</span><span class="mg-message-count">${this.progress + 1}/3</span></div><blockquote>${escapeHTML(question.message)}</blockquote></div><p class="mg-note"><span>YOUR BEST APPROACH</span>${escapeHTML(question.hint)}</p><div class="mg-answers">${this.answerButtons(question.answers)}</div>`;
     this.setFeedback('Choose a reply. The hint is on your side.');
   }
@@ -225,15 +243,15 @@ export class MiniGame {
   }
 
   renderSQL() {
-    const step = SQL_STEPS[this.progress];
-    this.stage.innerHTML = `<div class="mg-terminal"><div class="mg-terminal-bar"><span class="mg-terminal-dots" aria-hidden="true">● ● ●</span><span>find_the_humans.sql</span></div><div class="mg-query-lines">${SQL_STEPS.map((item, i) => `<div><span class="mg-line-number">${i + 1}</span><code class="${i > this.progress ? 'mg-terminal-muted' : ''}">${i < this.progress ? escapeHTML(item.code) : i === this.progress ? '<span class="mg-editor-cursor">▍</span> choose the next piece' : '…'}</code></div>`).join('')}</div><div class="mg-query-result"><span>GOAL</span> Show the names of active employees.</div></div><p class="mg-note"><span>PLAIN-ENGLISH HINT</span>${escapeHTML(step.hint)}</p><div class="mg-answers mg-code-answers">${this.answerButtons(step.answers)}</div>`;
+    const step = this.sqlSteps[this.progress];
+    this.stage.innerHTML = `<div class="mg-terminal"><div class="mg-terminal-bar"><span class="mg-terminal-dots" aria-hidden="true">● ● ●</span><span>find_the_humans.sql</span></div><div class="mg-query-lines">${this.sqlSteps.map((item, i) => `<div><span class="mg-line-number">${i + 1}</span><code class="${i > this.progress ? 'mg-terminal-muted' : ''}">${i < this.progress ? escapeHTML(item.code) : i === this.progress ? '<span class="mg-editor-cursor">▍</span> choose the next piece' : '…'}</code></div>`).join('')}</div><div class="mg-query-result"><span>GOAL</span> Show the names of active employees.</div></div><p class="mg-note"><span>PLAIN-ENGLISH HINT</span>${escapeHTML(step.hint)}</p><div class="mg-answers mg-code-answers">${this.answerButtons(step.answers)}</div>`;
     this.setFeedback('Choose the code that matches the hint.');
   }
 
   renderPassword() {
     if (this.memoryVisible) {
-      this.stage.innerHTML = `<div class="mg-memory"><span class="mg-memory-label">MEMORIZE THIS CODE</span><div class="mg-code-preview" aria-label="Code: 2, 4, 1, 3">${this.password.split('').map((digit) => `<span>${digit}</span>`).join('')}</div><p>Read it left to right. You’ve got this.</p><button type="button" class="mg-button mg-primary" data-action="remember">I remember it <span aria-hidden="true">→</span></button></div>`;
-      this.setFeedback('Memorize 2, 4, 1, 3. The code hides in a moment.');
+      this.stage.innerHTML = `<div class="mg-memory"><span class="mg-memory-label">MEMORIZE THIS CODE</span><div class="mg-code-preview" aria-label="Code: ${this.password.split('').join(', ')}">${this.password.split('').map((digit) => `<span>${digit}</span>`).join('')}</div><p>Read it left to right. You’ve got this.</p><button type="button" class="mg-button mg-primary" data-action="remember">I remember it <span aria-hidden="true">→</span></button></div>`;
+      this.setFeedback(`Memorize ${this.password.split('').join(', ')}. The code hides in a moment.`);
     } else {
       this.stage.innerHTML = `<div class="mg-memory"><span class="mg-memory-label">ENTER THE FOUR-DIGIT CODE</span><div class="mg-code-preview mg-code-entry" aria-label="Entered code" aria-live="polite">${[0, 1, 2, 3].map((i) => `<span class="${i === this.entered.length ? 'mg-digit-current' : ''}">${this.entered[i] || '·'}</span>`).join('')}</div><div class="mg-keypad">${[1, 2, 3, 4].map((digit) => `<button type="button" class="mg-key" data-action="digit" data-value="${digit}">${digit}</button>`).join('')}</div><div class="mg-memory-tools"><button type="button" class="mg-text-button" data-action="erase">← Erase</button><button type="button" class="mg-text-button" data-action="peek">Peek again</button></div></div>`;
       this.setFeedback('Type the code in order. The fourth digit checks it.');
@@ -241,7 +259,7 @@ export class MiniGame {
   }
 
   renderRequest() {
-    const [title, body] = REQUESTS[this.progress];
+    const [title, body] = this.requests[this.progress];
     this.stage.innerHTML = `<div class="mg-request-stack"><div class="mg-request"><div class="mg-request-top"><span class="mg-urgent-tag">ASAP</span><span>REQUEST ${String(this.progress + 1).padStart(2, '0')} / 08</span></div><h4>${escapeHTML(title)}</h4><p>${escapeHTML(body)}</p><div class="mg-request-sender"><span aria-hidden="true">↳</span> Someone who just “wanted to check in”</div></div></div><button type="button" class="mg-button mg-primary mg-wide" data-action="primary" ${this.cooldown > 0 ? 'disabled' : ''}>${this.cooldown > 0 ? 'Next request incoming…' : 'Resolve request'} <kbd>Space</kbd></button><div class="mg-queue" aria-label="${this.progress} of 8 requests resolved">${REQUESTS.map((_, i) => `<span class="${i < this.progress ? 'mg-queue-done' : i === this.progress ? 'mg-queue-current' : ''}">${i < this.progress ? '✓' : i + 1}</span>`).join('')}</div>`;
     this.setFeedback(this.progress ? 'Handled. Another “quick one” is on its way.' : 'Eight requests. One very capable you.');
   }
@@ -322,16 +340,16 @@ export class MiniGame {
   choose(index) {
     const type = this.task.type;
     const sequence = SEQUENCES[type];
-    const question = DIALOGUES[type]?.[this.progress] || (type === 'sql' ? SQL_STEPS[this.progress] : null);
+    const question = this.dialogues?.[this.progress] || (type === 'sql' ? this.sqlSteps[this.progress] : null);
     if (this.cooldown > 0 || !Number.isInteger(index) || index < 0 || index >= (sequence ? 4 : question ? 3 : 0)) return;
-    if (sequence && this.sequenceDone.includes(sequence.order.indexOf(index))) return;
+    if (sequence && this.sequenceDone.includes(index)) return;
     const correct = sequence ? sequence.order[this.progress] : question.correct;
     if (index !== correct) {
       this.cooldown = 0.3;
       this.mistake(sequence ? `Not quite. Next: ${sequence.steps[this.progress]}` : `Try again. ${question.hint}`, 0.75);
       return;
     }
-    if (sequence) this.sequenceDone.push(this.progress);
+    if (sequence) this.sequenceDone.push(correct);
     this.advance();
     if (this.state !== 'playing') return;
     this.cooldown = 0.25;
@@ -426,8 +444,11 @@ export class MiniGame {
     this.remaining = Math.max(0, this.remaining - penalty);
     this.syncClock();
     this.playSound('error');
+    this.root.classList.remove('mg-penalty-flash');
+    void this.root.offsetWidth;
+    this.root.classList.add('mg-penalty-flash');
     if (this.remaining <= 0) this.fail();
-    else this.setFeedback(message, 'error');
+    else this.setFeedback(`WRONG! -${formatPenalty(penalty)}. ${message}`, 'error');
   }
 
   syncClock() {

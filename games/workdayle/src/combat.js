@@ -3,6 +3,9 @@ const PLAYER_RADIUS = 0.24;
 const MAX_PROJECTILES = 16;
 export const DODGE_WINDOW = 0.3;
 export const UPPERCUT_CONTACT = 0.14;
+export const KJELL_RANDOM_VOICE_CHANCE = 0.22;
+export const KJELL_RANDOM_VOICE_COOLDOWN = 9;
+const KJELL_RANDOM_VOICE_CHECK_INTERVAL = 2.6;
 const segmentDistance = (ax, az, bx, bz, x, z) => {
   const dx = bx - ax;
   const dz = bz - az;
@@ -40,6 +43,9 @@ export class Combat {
     this.serial = 0;
     this.holeSequence = 0;
     this.signature = null;
+    this.kjellVoiceQueued = false;
+    this.kjellCmonQueued = false;
+    this.nextKjellVoiceCheck = KJELL_RANDOM_VOICE_CHECK_INTERVAL;
     this.phaseDefinitions = definition.phases || [{
       minHp: 0, name: 'Performance review', attacks: definition.attacks.map((a, i) => a.id || i),
       approachTime: 1.25, speedMultiplier: 1,
@@ -210,6 +216,26 @@ export class Combat {
     return false;
   }
 
+  queueKjellVoiceCue() {
+    if (this.definition.id !== 'kjell_rusti' || this.finished) return;
+    if (this.kjellVoiceQueued) return;
+    if (this.elapsed < this.nextKjellVoiceCheck) return;
+    this.kjellVoiceQueued = Math.random() < KJELL_RANDOM_VOICE_CHANCE;
+    this.nextKjellVoiceCheck = this.elapsed + (this.kjellVoiceQueued ? KJELL_RANDOM_VOICE_COOLDOWN : KJELL_RANDOM_VOICE_CHECK_INTERVAL);
+  }
+
+  consumeKjellVoiceCue() {
+    const queued = this.kjellVoiceQueued;
+    this.kjellVoiceQueued = false;
+    return queued;
+  }
+
+  consumeKjellCmonCue() {
+    const queued = this.kjellCmonQueued;
+    this.kjellCmonQueued = false;
+    return queued;
+  }
+
   spawnProjectile(attack, index = 0) {
     if (this.finished || this.projectiles.length >= MAX_PROJECTILES) return;
     const dx = this.player.x - this.boss.x;
@@ -274,6 +300,7 @@ export class Combat {
       this.rush = { vx: dx / distance * speed, vz: dz / distance * speed, hit: false };
       if (attack.kind === 'uppercut') {
         this.shake = Math.max(this.shake, 0.3);
+        if (this.definition.id === 'kjell_rusti') this.kjellCmonQueued = true;
         this.emit('uppercut', 'CMON!!');
         if (this.finished) return;
       }
@@ -301,6 +328,7 @@ export class Combat {
       this[key] = Math.max(0, this[key] - dt);
     }
     this.syncPhase();
+    this.queueKjellVoiceCue();
     if (this.finished) return;
     for (const hazard of this.hazards) {
       hazard.age += dt;

@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { BOSSES, FLOORS } from './content.js';
-import { builder, framedDoor, sign, disposeGroup } from './world.js';
+import { builder, framedDoor, sign, disposeGroup, createCharacter } from './world.js';
 import { createSnackRoom } from './interiors.js';
 
 const clamp01 = value => Math.max(0, Math.min(1, value));
@@ -25,21 +25,40 @@ export class CareerCutscene {
     this.kind = kind;
     this.onFinish = onFinish;
     this.elapsed = 0;
-    this.duration = kind === 'snack' ? 8 : 9;
+    this.duration = kind === 'intro' ? 11 : kind === 'snack' ? 8 : 9;
     this.boss = BOSSES[game.state.floor];
     this.finished = false;
     this.cameraOffset = new THREE.Vector3(6, 8, 10);
     this.knocked = false;
     this.revealed = false;
-    game.office.group.visible = false;
     game.playerMesh.visible = true;
     game.ui.closeModal();
     game.ui.show('toast', false);
     game.ui.toastTime = 0;
     game.ui.show('cinematic-layer', true);
     game.ui.elements['skip-cinematic'].onclick = () => this.finish();
-    game.ui.text('cinematic-title', kind === 'snack' ? "JILL'S SNACK KINGDOM" : `${this.boss.name.toUpperCase()} DEFEATED`);
-    if (kind === 'snack') {
+    game.ui.text('cinematic-title', kind === 'intro' ? 'WELCOME TO THE OFFICE'
+      : kind === 'snack' ? "JILL'S SNACK KINGDOM" : `${this.boss.name.toUpperCase()} DEFEATED`);
+    if (kind === 'intro') {
+      game.office.group.visible = true;
+      game.playerMesh.visible = false;
+      this.host = new THREE.Group();
+      this.host.name = 'new-hire-intro';
+      this.jill = createCharacter(this.boss.color, true, this.boss);
+      this.jill.scale.setScalar(1.08);
+      this.jill.position.set(18.2, 0, 1.5);
+      this.jill.rotation.y = -Math.PI / 2;
+      this.host.add(this.jill);
+      game.scene.add(this.host);
+      this.cameraPath = [
+        { at: 0, from: new THREE.Vector3(-8.2, 6.6, 22), to: new THREE.Vector3(-6, 1.2, 8) },
+        { at: 0.28, from: new THREE.Vector3(-21.5, 4.7, -4), to: new THREE.Vector3(-21.5, 1.1, -13.8) },
+        { at: 0.56, from: new THREE.Vector3(10.2, 4.9, -1.8), to: new THREE.Vector3(8.5, 1.1, -13.2) },
+        { at: 0.82, from: new THREE.Vector3(12.5, 4.1, 7.4), to: new THREE.Vector3(18.2, 1.4, 1.5) },
+        { at: 1, from: new THREE.Vector3(14.2, 3.2, 8.6), to: new THREE.Vector3(18.2, 1.4, 1.5) },
+      ];
+    } else if (kind === 'snack') {
+      game.office.group.visible = false;
       if (game.arena) game.arena.group.visible = false;
       this.room = createSnackRoom(this.boss);
       const b = builder();
@@ -80,7 +99,28 @@ export class CareerCutscene {
     }
     this.elapsed += dt;
     const t = this.elapsed;
-    if (this.kind === 'snack') {
+    if (this.kind === 'intro') {
+      const progress = clamp01(t / this.duration);
+      const segment = this.cameraPath.findLast((keyframe) => progress >= keyframe.at) || this.cameraPath[0];
+      const next = this.cameraPath.find((keyframe) => keyframe.at > segment.at) || segment;
+      const range = Math.max(0.001, next.at - segment.at);
+      const local = clamp01((progress - segment.at) / range);
+      game.camera.position.lerpVectors(segment.from, next.from, local);
+      game.camera.lookAt(new THREE.Vector3().lerpVectors(segment.to, next.to, local));
+      if (this.jill) {
+        this.jill.visible = true;
+        this.jill.userData.body.rotation.z = Math.sin(t * 1.2) * 0.025;
+        this.jill.userData.arms[1].rotation.x = t > 7 ? -1.1 + Math.sin(t * 7) * 0.35 : -0.25;
+        this.jill.userData.arms[0].rotation.x = 0.12 + Math.sin(t * 2.1) * 0.08;
+        this.jill.userData.head.rotation.y = 0.08 + Math.sin(t * 1.7) * 0.15;
+      }
+      game.ui.text('cinematic-line',
+        t < 2.2 ? 'JILL: "Welcome to the office! You are the new consultant. Please look busy immediately."'
+          : t < 4.5 ? 'JILL: "Kitchen there. Meeting rooms there. Bathrooms there. None of them improve the meetings."'
+            : t < 7 ? 'JILL: "Your job is simple: attend meetings, answer emails, and pretend to understand the roadmap."'
+              : t < 9.2 ? 'JILL: "If anyone asks for a quick favour, say yes. If anyone says “quick meeting”, run."'
+                : 'JILL: "Great. You will fit right in. Grab some REP and try not to anger management."');
+    } else if (this.kind === 'snack') {
       const boss = this.room.bossMesh;
       boss.visible = true;
       const departing = clamp01((t - 5) / 3);
@@ -156,9 +196,15 @@ export class CareerCutscene {
     this.finished = true;
     this.room?.dispose();
     this.room = null;
+    if (this.host) {
+      disposeGroup(this.host);
+      this.host = null;
+      this.jill = null;
+    }
     if (this.exit) { disposeGroup(this.exit); this.exit = null; }
     this.game.ui.show('cinematic-layer', false);
     this.game.ui.elements['transition-overlay'].style.opacity = 0;
     this.game.playerMesh.userData.body.position.y = 0;
+    this.game.playerMesh.visible = true;
   }
 }

@@ -54,6 +54,9 @@
 .minigame .mg-feedback { min-height: 38px; margin-top: 15px; font-size: 12px; line-height: 1.5; color: var(--mg-muted); }
 .minigame .mg-feedback-good { color: #436124; }
 .minigame .mg-feedback-error { color: var(--mg-error); }
+.minigame.mg-penalty-flash { animation: mg-penalty-flash .28s ease-out; }
+.minigame.mg-penalty-flash .mg-clock { color: var(--mg-error); transform: scale(1.08); }
+.minigame.mg-penalty-flash .mg-progress { box-shadow: 0 0 0 3px #f0c1b8; }
 .mg-footer { display: flex; justify-content: space-between; align-items: center; gap: 14px; padding-top: 9px; border-top: 1px solid var(--mg-line); }
 .mg-key-hint { color: var(--mg-muted); font: 10px/1.4 var(--mg-mono); text-align: right; }
 .minigame .mg-text-button { appearance: none; border: 0; background: none; color: var(--mg-muted); padding: 10px 2px; font-size: 12px; text-decoration: underline; text-underline-offset: 3px; min-height: 40px; }
@@ -190,6 +193,11 @@
 .mg-result-success { border-color: #b9d38a; background: var(--mg-lime); color: #44662a; }
 .minigame .mg-result h4 { font-size: 23px; line-height: 1.2; font-weight: 700; letter-spacing: -.035em; }
 .minigame .mg-result p { max-width: 35ch; font-size: 13px; line-height: 1.6; color: var(--mg-muted); margin: 11px 0 24px; }
+@keyframes mg-penalty-flash {
+  0% { box-shadow: inset 0 0 0 0 #f4c8bf; }
+  45% { box-shadow: inset 0 0 0 999px #fdf0ed; }
+  100% { box-shadow: inset 0 0 0 0 transparent; }
+}
 
 @media (max-width: 480px) {
   .minigame .mg-heading h3 { font-size: 18px; }

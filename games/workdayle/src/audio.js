@@ -1,6 +1,23 @@
 const CEO_TRACKS = import.meta.glob('../assets/**/*.{mp3,ogg,wav,m4a,aac,flac}', {
   eager: true, query: '?url', import: 'default',
 });
+const OPTIONAL_BOSS_AUDIO = import.meta.glob('../assets/audio/bosses/*.{mp3,ogg,wav,m4a,aac,flac}', {
+  eager: true, query: '?url', import: 'default',
+});
+
+const CEO_BASE_VOLUME = 0.55;
+const KJELL_CUES = {
+  cmon: {
+    filename: 'kjell_cmon.mp3',
+    matcher: /kjell_cmon\.(mp3|ogg|wav|m4a|aac|flac)$/i,
+    warning: '[Audio] Warning: Kjell CMON sound not found.',
+  },
+  random: {
+    filename: 'kjell_random.mp3',
+    matcher: /kjell_random\.(mp3|ogg|wav|m4a|aac|flac)$/i,
+    warning: '[Audio] Warning: Kjell random voice sound not found.',
+  },
+};
 
 export class GameAudio {
   constructor() {
@@ -8,6 +25,7 @@ export class GameAudio {
     this.muted = false;
     this.beat = 0;
     this.clock = 0;
+    this.assetWarnings = new Set();
   }
 
   get muted() { return this._muted; }
@@ -17,7 +35,6 @@ export class GameAudio {
   }
 
   startCEO(notify, tracks = CEO_TRACKS) {
-    this.stopCEO();
     const entries = Object.entries(tracks).sort(([a], [b]) => a.localeCompare(b));
     const chosen = entries.find(([path]) => /\/music\//.test(path)) ?? entries[0];
     if (!chosen) {
@@ -25,17 +42,35 @@ export class GameAudio {
       notify('CEO soundtrack missing from assets/music. The applause is implied.');
       return;
     }
+    if (this.ceoTrack && this.ceoTrack.dataset?.source === chosen[0]) {
+      this.ceoNotice = notify;
+      this.ceoPhase = 'parade';
+      this.resumeCEO();
+      return;
+    }
+    this.stopCEO();
     this.ceoTrack = new Audio(chosen[1]);
-    this.ceoTrack.loop = true;
+    this.ceoTrack.dataset.source = chosen[0];
+    this.ceoTrack.preload = 'auto';
+    this.ceoTrack.loop = false;
     this.ceoTrack.volume = 0;
     this.ceoTrack.muted = this.muted;
     this.ceoNotice = notify;
+    this.ceoPhase = 'parade';
     this.ceoTrack.addEventListener('error', () => {
       console.warn(`Workdayle could not load supplied CEO song ${chosen[0]}. Continuing without music.`);
       notify('The supplied CEO song could not be loaded. The parade continues.');
     }, { once: true });
+    this.ceoTrack.addEventListener('ended', () => {
+      if (this.ceoTrack?.dataset?.source !== chosen[0]) return;
+      this.ceoTrack = null;
+      this.ceoNotice = null;
+      this.ceoPhase = null;
+    }, { once: true });
     this.resumeCEO();
   }
+
+  hasCEOTrack() { return Boolean(this.ceoTrack); }
 
   resumeCEO() {
     if (!this.ceoTrack) return;
@@ -50,9 +85,19 @@ export class GameAudio {
 
   pauseCEO() { this.ceoTrack?.pause(); }
 
-  updateCEO(elapsed, duration) {
+  updateCEO(mode = this.ceoPhase, elapsed = 0, duration = 0) {
     if (!this.ceoTrack) return;
-    this.ceoTrack.volume = 0.55 * Math.max(0, Math.min(1, elapsed / 1.2, (duration - elapsed) / 2.5));
+    this.ceoPhase = mode || this.ceoPhase || 'office';
+    const fadeIn = Math.max(0, Math.min(1, elapsed / 1.2));
+    const phaseVolume = this.ceoPhase === 'parade'
+      ? CEO_BASE_VOLUME * fadeIn
+      : this.ceoPhase === 'reveal'
+        ? CEO_BASE_VOLUME
+        : CEO_BASE_VOLUME * 0.95;
+    const naturalFade = Number.isFinite(duration) && duration > 0 && this.ceoTrack.duration && Number.isFinite(this.ceoTrack.duration)
+      ? Math.max(0, Math.min(1, (this.ceoTrack.duration - this.ceoTrack.currentTime) / Math.max(4, duration)))
+      : 1;
+    this.ceoTrack.volume = Math.max(0, Math.min(1, phaseVolume * naturalFade));
   }
 
   stopCEO() {
@@ -62,6 +107,38 @@ export class GameAudio {
     this.ceoTrack.load();
     this.ceoTrack = null;
     this.ceoNotice = null;
+    this.ceoPhase = null;
+  }
+
+  resolveOptionalBossCue(kind, tracks = OPTIONAL_BOSS_AUDIO) {
+    const cue = KJELL_CUES[kind];
+    if (!cue) return null;
+    const entry = Object.entries(tracks).find(([path]) => cue.matcher.test(path.replaceAll('\\', '/')));
+    if (entry) return entry[1];
+    if (!this.assetWarnings.has(cue.filename)) {
+      this.assetWarnings.add(cue.filename);
+      console.warn(`${cue.warning} Expected assets/audio/bosses/${cue.filename}`);
+    }
+    return null;
+  }
+
+  playKjellCue(kind) {
+    if (this.muted) return false;
+    const source = this.resolveOptionalBossCue(kind);
+    if (!source) return false;
+    const label = kind === 'cmon' ? 'Kjell CMON cue' : 'Kjell random voice cue';
+    const clip = new Audio(source);
+    clip.preload = 'auto';
+    clip.volume = kind === 'cmon' ? 0.9 : 0.72;
+    clip.muted = this.muted;
+    clip.addEventListener('error', () => {
+      console.warn(`[Audio] Warning: ${label} could not be loaded.`);
+    }, { once: true });
+    clip.play().catch(error => {
+      if (error?.name === 'AbortError') return;
+      console.warn(`[Audio] Warning: ${label} playback failed.`, error);
+    });
+    return true;
   }
 
   start() {

@@ -12,6 +12,88 @@ const PALETTE = {
   metal: '#586461', ink: '#293b36', screen: '#b7d4c0', clay: '#c78364',
   gold: '#c7ac65', green: '#b8e571', navy: '#46566a',
 };
+const FLOOR_THEMES = [
+  {
+    architecture: 'cramped-delivery-cubicles',
+    floorBase: '#b8b3a7',
+    floorTop: '#ede8db',
+    grid: '#d1cec2',
+    wall: '#dde0d6',
+    trim: '#90a08d',
+    cap: '#c4b08f',
+    corridor: '#e6decf',
+    stripe: '#b1bea8',
+    chair: '#7d8c85',
+    roomColors: ['#d8d0bc', '#cbd3d5', '#c4cec1', '#dde1d7', '#d3c8b6', '#c5cfbf'],
+    lightFrame: PALETTE.metal,
+    lightGlow: '#e2efe9',
+    lightColor: '#e6f3ff',
+    lightIntensity: 2.2,
+    plantCount: 4,
+    cubicle: true,
+  },
+  {
+    architecture: 'team-meeting-suites',
+    floorBase: '#bfae9a',
+    floorTop: '#f1e3d7',
+    grid: '#ddcfc1',
+    wall: '#eee1d6',
+    trim: '#9c6e5b',
+    cap: '#d8b99f',
+    corridor: '#f5e1d7',
+    stripe: '#f0b58f',
+    chair: '#869779',
+    roomColors: ['#f0dcc9', '#c9dce0', '#d7e1c2', '#ebeadf', '#e5d3c2', '#d5dbc9'],
+    lightFrame: '#7a6a5f',
+    lightGlow: '#ffe4ac',
+    lightColor: '#ffe1ab',
+    lightIntensity: 8.5,
+    plantCount: 10,
+    coffeeAccent: '#d49d57',
+  },
+  {
+    architecture: 'open-department-conference',
+    floorBase: '#56474a',
+    floorTop: '#d7d2dc',
+    grid: '#b3aebb',
+    wall: '#cfcbe0',
+    trim: '#56657a',
+    cap: '#8f7a6a',
+    corridor: '#cbc3d4',
+    stripe: '#6b7f99',
+    chair: '#4d5862',
+    roomColors: ['#cdc2c7', '#aeb9ca', '#bccbbf', '#d2d6df', '#c4b5af', '#b8c0c6'],
+    lightFrame: '#6f7787',
+    lightGlow: '#f2d8bb',
+    lightColor: '#ffd7af',
+    lightIntensity: 10,
+    plantCount: 14,
+    premium: true,
+  },
+  {
+    architecture: 'executive-salon',
+    floorBase: '#3a2f28',
+    floorTop: '#efe2c8',
+    grid: '#d2c3a6',
+    wall: '#eadfc6',
+    trim: '#b89d5f',
+    cap: '#d1b670',
+    corridor: '#f4ead7',
+    stripe: '#d8b55b',
+    chair: '#4a4038',
+    roomColors: ['#e5d6bb', '#d6dcd7', '#d8d1b0', '#efe7d1', '#dec8a7', '#d8d5c4'],
+    lightFrame: PALETTE.gold,
+    lightGlow: '#fff0c7',
+    lightColor: '#ffe1ab',
+    lightIntensity: 13,
+    plantCount: 18,
+    premium: true,
+    marble: true,
+  },
+];
+const MIN_NPC_SPAWN_DISTANCE = 2.25;
+const NPC_PERSONAL_SPACE = 1.05;
+const NPC_CROWD_SLOWDOWN_RADIUS = 1.8;
 
 export function builder() {
   const geometries = new Map();
@@ -418,7 +500,8 @@ export function createOffice(floor, index = 0, options = {}) {
   }));
   const executive = index === 4;
   const tier = Math.min(index, 3);
-  group.userData.architecture = ['cramped-delivery-cubicles', 'team-meeting-suites', 'open-department-conference', 'executive-salon'][tier];
+  const theme = FLOOR_THEMES[tier];
+  group.userData.architecture = theme.architecture;
   const colliders = [];
   const interactables = OFFICE_STATIONS.filter((station) => !executive || station.kind !== 'boss')
     .map((station) => ({ ...station }));
@@ -435,9 +518,9 @@ export function createOffice(floor, index = 0, options = {}) {
   };
   const wall = (x, z, w, d, height = 0.88) => {
     colliders.push({ x, z, w, d, kind: 'wall' });
-    b.box(group, PALETTE.wall, x, height / 2, z, w, height, d);
-    b.box(group, PALETTE.sage, x, 0.18, z, w + 0.015, 0.36, d + 0.015);
-    b.box(group, PALETTE.wood, x, height + 0.035, z, w + 0.035, 0.07, d + 0.035, true);
+    b.box(group, theme.wall, x, height / 2, z, w, height, d);
+    b.box(group, theme.trim, x, 0.18, z, w + 0.015, 0.36, d + 0.015);
+    b.box(group, theme.cap, x, height + 0.035, z, w + 0.035, 0.07, d + 0.035, true);
   };
   const doorway = (axis, fixed, center, label) => {
     const door = subgroup(group, axis === 'x' ? center : fixed, 0,
@@ -461,10 +544,10 @@ export function createOffice(floor, index = 0, options = {}) {
     }
     segment(cursor, end);
   };
-  b.box(group, '#b5aa91', 0, -0.27, 0, 52, 0.5, 40, true);
-  b.box(group, PALETTE.cream, 0, -0.025, 0, 51.95, 0.045, 39.95);
-  for (let x = -24; x <= 24; x += 2) b.box(group, '#dcd8ca', x, 0.003, 0, 0.017, 0.006, 39.3);
-  for (let z = -18; z <= 18; z += 2) b.box(group, '#dcd8ca', 0, 0.004, z, 51.3, 0.006, 0.017);
+  b.box(group, theme.floorBase, 0, -0.27, 0, 52, 0.5, 40, true);
+  b.box(group, theme.floorTop, 0, -0.025, 0, 51.95, 0.045, 39.95);
+  for (let x = -24; x <= 24; x += 2) b.box(group, theme.grid, x, 0.003, 0, 0.017, 0.006, 39.3);
+  for (let z = -18; z <= 18; z += 2) b.box(group, theme.grid, 0, 0.004, z, 51.3, 0.006, 0.017);
   wall(0, -19.7, 51.7, 0.25, 1.18);
   wall(-25.7, 0, 0.25, 39.4, 1.08);
   wall(25.7, 0, 0.25, 39.4, 0.68);
@@ -488,13 +571,7 @@ export function createOffice(floor, index = 0, options = {}) {
     wallRun('x', 11, 3, 25.7, [[8.5, 'DESIGN STUDIO'], [20, 'CLIENT TEAM']]);
   }
 
-  const roomColors = [
-    ['#d4c5a7', '#c0ced0', '#acbea9', '#d4ddd2', '#cec3ae', '#b8c4ad'],
-    ['#dfc7b1', '#b9c9cd', '#bcc9ab', '#d8dfd3', '#d6c6ae', '#cad0bb'],
-    ['#c5c4d8', '#b9c8d5', '#b1c4bb', '#d0d9d8', '#c9c1ae', '#c2cbbf'],
-    ['#cbbb99', '#aebdc1', '#b1bfa5', '#c8d0c0', '#c6b99b', '#afbfae'],
-    ['#d4c69d', '#c1ccc3', '#bdc7ad', '#d9decb', '#d6c9a9', '#c8d1bd'],
-  ][Math.min(index, 4)];
+  const roomColors = theme.roomColors;
   const rooms = [
     [-19.5, -13.3, 10.7, 12.3, 'KAFFEKROKEN', 0], [-8.5, -13.3, 10.7, 12.3, 'SERVER / DO NOT UNPLUG', 1],
     [8.5, -13.3, 10.7, 12.3, 'FJORD', 2], [19.5, -13.3, 10.7, 12.3, 'WC LOBBY / ENTER AT DOOR', 3],
@@ -509,11 +586,11 @@ export function createOffice(floor, index = 0, options = {}) {
     b.box(group, roomColors[color], x, 0.015, z, w, 0.026, d);
     floorLabel(group, name, x, z + d / 2 - 0.85, Math.min(w - 1, 7.8), 0.59, PALETTE.dark);
   }
-  b.box(group, '#e3dac6', 0, 0.012, 0, 5.7, 0.018, 38.5);
-  b.box(group, accent, 0.85, 0.03, 0, 0.095, 0.018, 37);
+  b.box(group, theme.corridor, 0, 0.012, 0, 5.7, 0.018, 38.5);
+  b.box(group, theme.stripe, 0.85, 0.03, 0, 0.095, 0.018, 37);
   for (const z of [-5, 9]) {
-    b.box(group, '#e7dfce', 0, 0.016, z, 50.5, 0.022, 3.55);
-    b.box(group, accent, 0, 0.034, z + 0.7, 49.8, 0.018, 0.07);
+    b.box(group, theme.corridor, 0, 0.016, z, 50.5, 0.022, 3.55);
+    b.box(group, theme.stripe, 0, 0.034, z + 0.7, 49.8, 0.018, 0.07);
   }
   for (const z of [13, 5, -1, -10, -14]) {
     const arrow = subgroup(group, 0.85, 0.05, z);
@@ -537,15 +614,17 @@ export function createOffice(floor, index = 0, options = {}) {
     if (executive && i % 2) return;
     if (tier === 1 && [0, 3].includes(i)) return;
     if (tier >= 2 && z > 11) return;
-    if (solid(x, z, 2.65, 1.35, () => desk(b, group, x, z, rotation, i))) {
+    if (solid(x, z, 2.65, 1.35, () => desk(b, group, x, z, rotation, i + tier))) {
       const chairZ = z + Math.cos(rotation) * 1.21;
-      solid(x, chairZ, 0.7, 0.72, () => chair(b, group, x, chairZ, rotation + Math.PI));
+      solid(x, chairZ, 0.7, 0.72, () => chair(b, group, x, chairZ, rotation + Math.PI, theme.chair));
     }
   });
   if (tier === 0) {
     for (const [x, z] of [[-10.5, 12.8], [6, 12.8], [-10, -0.8]]) {
       solid(x, z, 2.65, 1.35, () => desk(b, group, x, z, 0, 1));
       solid(x, z - 0.88, 3, 0.15, () => b.box(group, '#97a593', x, 0.75, z - 0.88, 3, 1.5, 0.15));
+      solid(x - 1.48, z, 0.14, 2, () => b.box(group, '#aab7a6', x - 1.48, 0.88, z, 0.13, 1.76, 1.95));
+      solid(x + 1.48, z, 0.14, 2, () => b.box(group, '#aab7a6', x + 1.48, 0.88, z, 0.13, 1.76, 1.95));
     }
   }
   sign(group, 'CV / YOUR NEXT CHAPTER', -6, 2.2, -1.45, 2.8, 0.42);
@@ -561,7 +640,7 @@ export function createOffice(floor, index = 0, options = {}) {
     for (let dx = -w / 2 + 0.8; dx < w / 2; dx += 1.5) {
       mug(b, table, dx, 1.1, d * 0.28);
       for (const side of [-1, 1]) solid(x + dx, z + side * (d / 2 + 0.65), 0.7, 0.7,
-        () => chair(b, group, x + dx, z + side * (d / 2 + 0.65), side > 0 ? Math.PI : 0, tier === 3 ? '#423e36' : '#768d80'));
+        () => chair(b, group, x + dx, z + side * (d / 2 + 0.65), side > 0 ? Math.PI : 0, tier === 3 ? '#423e36' : theme.chair));
     }
   });
   if (tier === 1) {
@@ -586,26 +665,26 @@ export function createOffice(floor, index = 0, options = {}) {
     const fixture = subgroup(group, x, 4.4, tier >= 2 ? 15.5 : 2);
     fixture.name = ['fluorescent-office-strip', 'warm-huddle-pendant', 'conference-task-light', 'executive-chandelier'][tier];
     if (tier < 2) {
-      b.box(fixture, PALETTE.metal, 0, 0, 0, tier ? 1.4 : 3.5, 0.13, tier ? 0.8 : 0.35, true);
-      b.box(fixture, tier ? '#ffe2ac' : '#e2f1eb', 0, -0.08, 0, tier ? 1.2 : 3.3, 0.035, tier ? 0.6 : 0.25,
-        false, { emissive: tier ? '#ffe2ac' : '#e2f1eb', emissiveIntensity: tier ? 0.8 : 0.3 });
+      b.box(fixture, theme.lightFrame, 0, 0, 0, tier ? 1.4 : 3.5, 0.13, tier ? 0.8 : 0.35, true);
+      b.box(fixture, theme.lightGlow, 0, -0.08, 0, tier ? 1.2 : 3.3, 0.035, tier ? 0.6 : 0.25,
+        false, { emissive: theme.lightGlow, emissiveIntensity: tier ? 0.85 : 0.35 });
     } else {
-      b.ring(fixture, tier === 3 ? PALETTE.gold : PALETTE.metal, 0, 0, 0, tier === 3 ? 1.55 : 0.9, 0.065);
+      b.ring(fixture, tier === 3 ? PALETTE.gold : theme.lightFrame, 0, 0, 0, tier === 3 ? 1.55 : 0.9, 0.065);
       for (let i = 0; i < (tier === 3 ? 8 : 4); i++) {
         const angle = i * Math.PI * 2 / (tier === 3 ? 8 : 4), radius = tier === 3 ? 1.55 : 0.9;
-        b.sphere(fixture, '#fff0c7', Math.cos(angle) * radius, -0.15, Math.sin(angle) * radius,
-          0.09, tier === 3 ? 0.3 : 0.12, 0.09, { emissive: '#fff0c7', emissiveIntensity: 0.85 });
+        b.sphere(fixture, theme.lightGlow, Math.cos(angle) * radius, -0.15, Math.sin(angle) * radius,
+          0.09, tier === 3 ? 0.3 : 0.12, 0.09, { emissive: theme.lightGlow, emissiveIntensity: 0.85 });
       }
     }
-    const light = new THREE.PointLight(tier ? '#ffe1ab' : '#e6f3ff', tier ? 7 + tier * 2 : 2, 13, 2);
+    const light = new THREE.PointLight(theme.lightColor, theme.lightIntensity, tier === 3 ? 16 : 13, 2);
     light.position.y = -0.2;
     fixture.add(light);
   }
 
   solid(-21.6, -18.3, 5.4, 1.25, () => {
     const kitchen = subgroup(group, -21.6, 0, -18.3);
-    b.box(kitchen, PALETTE.sage, 0, 0.54, 0, 5.4, 1.05, 1.2, true);
-    b.box(kitchen, PALETTE.woodLight, 0, 1.12, 0, 5.55, 0.14, 1.3, true);
+    b.box(kitchen, tier >= 2 ? '#596153' : PALETTE.sage, 0, 0.54, 0, 5.4, 1.05, 1.2, true);
+    b.box(kitchen, tier === 3 ? '#dccda7' : PALETTE.woodLight, 0, 1.12, 0, 5.55, 0.14, 1.3, true);
     for (const x of [-2, -1, 0, 1, 2]) {
       b.box(kitchen, '#87997c', x, 0.53, 0.61, 0.94, 0.87, 0.045, true);
       b.box(kitchen, PALETTE.gold, x, 0.83, 0.65, 0.28, 0.035, 0.032);
@@ -623,8 +702,8 @@ export function createOffice(floor, index = 0, options = {}) {
     b.beam(kitchen, PALETTE.paper, [1.8, 1.6, -0.38], [1.8, 1.6, -0.12], 0.034);
     plant(b, kitchen, -2, 0, 0.48, 1.2);
   });
-  sign(group, 'KAFFEKROKEN', -21.2, 2.48, -19.49, 5.1, 0.8,
-    { background: PALETTE.sage, small: 'Stavanger runs on coffee. So do you.' });
+  sign(group, tier === 3 ? 'EXECUTIVE COFFEE BAR' : 'KAFFEKROKEN', -21.2, 2.48, -19.49, 5.1, 0.8,
+    { background: tier >= 2 ? '#4d5b4b' : PALETTE.sage, small: tier === 3 ? 'The beans now report directly to leadership.' : 'Stavanger runs on coffee. So do you.' });
   solid(-16.2, -15, 1.15, 1.1, () => {
     b.box(group, PALETTE.paper, -16.2, 1.05, -15, 1.15, 2.1, 1.1, true);
     b.box(group, PALETTE.dark, -15.85, 1.22, -14.43, 0.055, 0.61, 0.06, true);
@@ -659,7 +738,7 @@ export function createOffice(floor, index = 0, options = {}) {
     });
     for (const dx of [-1, 1]) for (const side of [-1, 1]) {
       solid(x + dx, z + side * 1.4, 0.7, 0.72, () =>
-        chair(b, group, x + dx, z + side * 1.4, side > 0 ? Math.PI : 0, '#768d80'));
+        chair(b, group, x + dx, z + side * 1.4, side > 0 ? Math.PI : 0, theme.chair));
     }
   }
   b.box(group, PALETTE.wood, 8.5, 1.95, -19.5, 5.2, 1.7, 0.12, true);
@@ -745,7 +824,19 @@ export function createOffice(floor, index = 0, options = {}) {
     [1.9, -18, 0.85], [-1.95, 14, 0.9],
     [-12, 18, 1.3], [11.8, 6, 1.25], [-15.5, -17, 1.1], [23.8, 17.7, 1.4],
     [-2, -10, 1.4], [2, 4.5, 1.35], [18.3, -18.5, 1.5], [-22, 17.8, 1.5],
-  ].slice(0, [4, 10, 14, 18][tier])) solid(x, z, size * 0.62, size * 0.62, () => plant(b, group, x, z, size));
+  ].slice(0, theme.plantCount)) solid(x, z, size * 0.62, size * 0.62, () => plant(b, group, x, z, size));
+  if (theme.marble) {
+    b.box(group, '#d8b866', 0, 0.035, 14.25, 14.2, 0.03, 0.18, true);
+    for (const [x, z] of [[-18.8, 14.9], [-18.8, 17.9]]) {
+      solid(x, z, 1.8, 1.4, () => {
+        const pedestal = subgroup(group, x, 0, z);
+        b.box(pedestal, '#f0e8d5', 0, 0.55, 0, 1.6, 1.1, 1.2, true);
+        b.box(pedestal, PALETTE.gold, 0, 1.13, 0, 1.75, 0.08, 1.35, true);
+        const trophy = b.ring(pedestal, PALETTE.gold, 0, 1.63, 0, 0.42, 0.08);
+        trophy.rotation.z = 0.4;
+      });
+    }
+  }
   for (const [x, z, rotation] of [[-25.52, -12, Math.PI / 2], [-25.52, 14, Math.PI / 2], [19.6, -19.52, 0]]) {
     const window = subgroup(group, x, 1.65, z, rotation);
     b.box(window, PALETTE.dark, 0, 0, 0, 4.5, 1.13, 0.09, true);
@@ -776,7 +867,7 @@ export function createOffice(floor, index = 0, options = {}) {
       && Math.hypot(point.x - OFFICE_SPAWN.x, point.z - OFFICE_SPAWN.z) > 3), rng);
   const starts = [];
   for (const point of startingPoints) {
-    if (starts.every(other => Math.hypot(other.x - point.x, other.z - point.z) >= 1.8)) starts.push(point);
+    if (starts.every(other => Math.hypot(other.x - point.x, other.z - point.z) >= MIN_NPC_SPAWN_DISTANCE)) starts.push(point);
     if (starts.length >= npcs.length) break;
   }
   const animated = [];
@@ -834,9 +925,27 @@ export function createOffice(floor, index = 0, options = {}) {
           }
           if (actor.wait <= 0 && actor.waypoint < actor.route.length) {
             const target = actor.route[actor.waypoint], dx = target.x - item.x, dz = target.z - item.z;
-            const distance = Math.hypot(dx, dz), travel = Math.min(distance, step * 1.05);
-            const next = { x: item.x + (distance ? dx / distance * travel : 0), z: item.z + (distance ? dz / distance * travel : 0) };
-            const occupied = animated.some(other => other !== actor && Math.hypot(other.item.x - next.x, other.item.z - next.z) < 0.65);
+            const nearby = animated.filter(other => other !== actor
+              && Math.hypot(other.item.x - item.x, other.item.z - item.z) < NPC_CROWD_SLOWDOWN_RADIUS);
+            let avoidX = 0;
+            let avoidZ = 0;
+            for (const other of nearby) {
+              const awayX = item.x - other.item.x;
+              const awayZ = item.z - other.item.z;
+              const spacing = Math.hypot(awayX, awayZ) || 0.001;
+              const weight = Math.max(0, (NPC_PERSONAL_SPACE + 0.35 - spacing) / (NPC_PERSONAL_SPACE + 0.35));
+              avoidX += awayX / spacing * weight;
+              avoidZ += awayZ / spacing * weight;
+            }
+            const crowdFactor = nearby.length ? Math.max(0.45, 1 - nearby.length * 0.16) : 1;
+            const distance = Math.hypot(dx, dz);
+            const travel = Math.min(distance, step * 1.05 * crowdFactor);
+            const next = {
+              x: item.x + (distance ? dx / distance * travel : 0) + avoidX * step * 0.42,
+              z: item.z + (distance ? dz / distance * travel : 0) + avoidZ * step * 0.42,
+            };
+            const occupied = animated.some(other => other !== actor
+              && Math.hypot(other.item.x - next.x, other.item.z - next.z) < NPC_PERSONAL_SPACE);
             if (!occupied && navigation.isWalkable(next)) {
               actor.blockedFor = 0;
               item.x = item.npc.x = next.x;
@@ -850,6 +959,12 @@ export function createOffice(floor, index = 0, options = {}) {
               if (actor.waypoint >= actor.route.length) actor.wait = 3 + rng() * 7;
             } else {
               actor.blockedFor += step;
+              if (actor.blockedFor > 0.9 && planningBudget > 0) {
+                planningBudget--;
+                const alternate = destinations[Math.min(destinations.length - 1, Math.floor(rng() * destinations.length))];
+                actor.route = alternate ? navigation.route(item, alternate) : [];
+                actor.waypoint = 0;
+              }
               if (actor.blockedFor > 2) {
                 actor.route = [];
                 actor.waypoint = 0;

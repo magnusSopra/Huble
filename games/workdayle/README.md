@@ -61,7 +61,16 @@ Progress and personal bests are saved in this browser's local storage. Continue 
 
 Office and combat audio is synthesized locally, begins after a user gesture, and can be muted. Kjell retains his heavier final-boss arrangement.
 
-The CEO parade uses the supplied **Vitas - The 7th Element.mp3** in `assets\music`, unchanged. Playback starts with the parade, pauses with it, follows the mute setting, fades near arrival and stops on exit/restart. MP3, OGG, WAV, M4A, AAC and FLAC assets are supported; music-folder files take priority over other audio assets. Keep the intended parade song as the sole music file to avoid ambiguity, and rebuild before deploying replacement assets. A missing/unplayable song produces a clear console warning and on-screen notice; the cinematic continues without substituting another track. No network AI service or external media service is used.
+The CEO parade uses the supplied **Vitas - The 7th Element.mp3** in `assets\music`, unchanged. Playback now starts once at the corridor cinematic, survives the parade → CEO office transition without restarting, follows pause/mute, and naturally continues in the corner office until the same track ends or you restart. MP3, OGG, WAV, M4A, AAC and FLAC assets are supported; music-folder files take priority over other audio assets. Keep the intended parade song as the sole music file to avoid ambiguity, and rebuild before deploying replacement assets. A missing/unplayable song produces a clear console warning and on-screen notice; the cinematic continues without substituting another track. No network AI service or external media service is used.
+
+Optional Kjell voice clips can be dropped into `assets\audio\bosses\` as:
+
+```text
+assets\audio\bosses\kjell_cmon.mp3
+assets\audio\bosses\kjell_random.mp3
+```
+
+Other supported audio extensions with the same basenames also work. Missing files only log a warning and never break the fight.
 
 ## Bosses and photographs
 

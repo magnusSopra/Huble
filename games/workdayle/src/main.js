@@ -62,7 +62,7 @@ class Workdayle {
         this.ui.elements.sound.setAttribute('aria-label', this.audio.muted ? 'Unmute audio' : 'Mute audio');
         this.ui.text('parade-sound', this.audio.muted ? 'Unmute music' : 'Mute music');
         this.ui.toast(this.audio.muted ? 'Quiet quitting: audio off.' : 'Office soundtrack: on.');
-        if (this.mode === 'parade' && !this.audio.muted) this.audio.resumeCEO();
+        if (this.audio.hasCEOTrack() && !this.audio.muted) this.audio.resumeCEO();
       },
       pause: () => this.togglePause(),
       stats: () => this.toggleStats(),
@@ -247,6 +247,11 @@ class Workdayle {
     if (this.state.complete && this.state.floor !== FLOORS.length - 1) {
       this.state.changeFloor(FLOORS.length - 1);
       this.loadFloor();
+    }
+    if (!this.state.complete && !this.state.introSeen && this.state.rank === 0
+      && this.state.floor === 0 && this.state.completed.size === 0 && this.state.elapsed === 0) {
+      this.startNewHireIntro();
+      return;
     }
     this.setMode('office');
     this.ui.closeModal();
@@ -599,6 +604,18 @@ class Workdayle {
     });
   }
 
+  startNewHireIntro() {
+    this.cutscene?.dispose();
+    this.cutscene = new CareerCutscene(this, 'intro', () => {
+      this.cutscene = null;
+      this.state.introSeen = true;
+      this.setMode('office');
+      this.ui.toast('Orientation complete. Find the green markers. Pretend this all seems normal.');
+      this.refreshObjective();
+      this.save();
+    });
+  }
+
   makeCombatEffects() {
     this.fists = new THREE.Group();
     const sleeveMat = new THREE.MeshStandardMaterial({ color: '#486653', roughness: 0.9 });
@@ -677,6 +694,7 @@ class Workdayle {
     this.ui.radar(this.combat);
     this.ui.text('review-label', this.state.floor === BOSSES.length - 1 ? 'FINAL BOSS / KJELL RUSTI / CEO' : 'MANDATORY PERFORMANCE REVIEW');
     this.ui.text('attack-callout', this.state.floor === BOSSES.length - 1 ? 'FINAL BOSS: KJELL RUSTI' : 'THIS MEETING JUST GOT PERSONAL');
+    this.ui.show('attack-callout', true);
     this.ui.text('boss-phase', '');
     this.ui.show('hazard-warning', false);
     this.ui.show('lock-hint', true);
@@ -701,6 +719,7 @@ class Workdayle {
     this.particles.forEach(particle => { particle.life = 0; particle.mesh.visible = false; });
     this.ui.elements['damage-overlay'].style.opacity = 0;
     this.ui.elements['attack-callout'].classList.remove('uppercut-callout');
+    this.ui.show('attack-callout', false);
     this.state.health = won ? this.combat.player.hp : 100;
     this.run.sync();
     if (won) {
@@ -780,10 +799,10 @@ class Workdayle {
       onLine: line => this.ui.text('parade-line', line),
     });
     this.audio.startCEO(message => this.ui.text('parade-audio', message));
+    this.audio.updateCEO('parade', 0, this.parade.duration);
   }
 
   finishParade() {
-    this.audio.stopCEO();
     this.parade?.dispose();
     this.parade = null;
     this.state.changeFloor(FLOORS.length - 1);
@@ -797,6 +816,7 @@ class Workdayle {
     this.ui.text('parade-title', 'Your expense account has no ceiling');
     this.ui.text('parade-line', 'One enormous office. Absolutely no self-awareness.');
     this.ui.elements['skip-parade'].onclick = () => this.showFinalResults();
+    this.audio.updateCEO('reveal', 0, 2);
     this.save();
   }
 
@@ -840,7 +860,7 @@ class Workdayle {
     this.audio.start();
     const mode = this.pauseFrom;
     this.setMode(mode);
-    if (mode === 'parade') this.audio.resumeCEO();
+    if (this.audio.hasCEOTrack()) this.audio.resumeCEO();
     if (mode === 'cutscene') this.ui.show('cinematic-layer', true);
     if (mode === 'minigame') {
       this.ui.elements.modal.innerHTML = '';
@@ -919,6 +939,8 @@ class Workdayle {
       z: Number(this.keys.has('KeyS') || this.keys.has('ArrowDown')) - Number(this.keys.has('KeyW') || this.keys.has('ArrowUp')),
       turn: Number(this.keys.has('KeyQ')) - Number(this.keys.has('KeyR')),
     });
+    if (combat.consumeKjellCmonCue()) this.audio.playKjellCue('cmon');
+    if (combat.consumeKjellVoiceCue()) this.audio.playKjellCue('random');
     if (this.mode !== 'combat') return;
     this.state.health = combat.player.hp;
     this.camera.position.set(combat.player.x, 1.6 + (combat.invulnerable > 0 ? -0.2 : 0), combat.player.z);
@@ -955,22 +977,24 @@ class Workdayle {
     this.ui.elements['damage-overlay'].style.opacity = combat.hitFlash * 1.8;
     this.combatMessageTime = Math.max(0, (this.combatMessageTime || 0) - dt);
     const callout = this.ui.elements['attack-callout'];
+    let calloutHtml = '';
+    let calloutColor = '#e3efbb';
     callout.classList.toggle('uppercut-callout', combat.attack.kind === 'uppercut' && combat.boss.phase === 'attack');
     if (combat.attack.kind === 'uppercut' && combat.boss.phase === 'attack') {
-      callout.textContent = 'CMON!!';
+      calloutHtml = 'CMON!!';
+      calloutColor = '#ffe590';
     } else if (combat.boss.phase === 'telegraph') {
-      callout.innerHTML = `${combat.attack.name}<small>${combat.attack.line}</small>`;
-      callout.style.color = '#ffc195';
+      calloutHtml = `${combat.attack.name}<small>${combat.attack.line}</small>`;
+      calloutColor = '#ffc195';
     } else if (this.combatMessageTime > 0) {
-      callout.textContent = this.combatMessage;
-      callout.style.color = '#e3efbb';
+      calloutHtml = this.combatMessage;
     } else if (combat.boss.phase === 'recover') {
-      callout.innerHTML = 'COUNTER WINDOW<small>Get close. Punch. Provide feedback.</small>';
-      callout.style.color = '#d9fba1';
-    } else {
-      callout.innerHTML = combat.slow > 0 ? 'RESOURCES REALLOCATED<small>Movement slowed. Dodge is still available.</small>' : '<small>Watch the wind-up. Dodge. Counter.</small>';
-      callout.style.color = '#e3efbb';
+      calloutHtml = 'COUNTER WINDOW<small>Get close. Punch. Provide feedback.</small>';
+      calloutColor = '#d9fba1';
     }
+    callout.innerHTML = calloutHtml;
+    callout.style.color = calloutColor;
+    this.ui.show('attack-callout', Boolean(calloutHtml));
   }
 
   frame(timestamp) {
@@ -990,9 +1014,10 @@ class Workdayle {
     else if (this.mode === 'minigame') this.mini?.update(dt);
     else if (this.mode === 'ending') this.ending?.update(wallDt);
     else if (this.mode === 'parade') {
-      this.audio.updateCEO(this.parade.elapsed, this.parade.duration);
+      this.audio.updateCEO('parade', this.parade.elapsed, this.parade.duration);
       this.parade.update(dt);
     } else if (this.mode === 'reveal') {
+      if (this.audio.hasCEOTrack()) this.audio.updateCEO('reveal', this.revealTime, 2);
       this.revealTime += dt;
       const alpha = Math.min(1, this.revealTime / 2);
       this.camera.position.lerpVectors(this.revealStart, this.revealEnd, alpha * alpha * (3 - 2 * alpha));
@@ -1011,6 +1036,9 @@ class Workdayle {
         this.setMode('combat');
         this.ui.elements['transition-overlay'].style.opacity = 0;
       }
+    }
+    if (this.audio.hasCEOTrack() && ['office', 'results', 'paused'].includes(this.mode) && this.state.complete) {
+      this.audio.updateCEO('office');
     }
     if (this.run.active) {
       this.saveClock += wallDt;

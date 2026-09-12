@@ -1,10 +1,7 @@
+import { shuffleArray } from './rng.js';
+
 export function shuffled(items, rng = Math.random) {
-  const result = [...items];
-  for (let i = result.length - 1; i > 0; i--) {
-    const j = Math.min(i, Math.max(0, Math.floor(rng() * (i + 1))));
-    [result[i], result[j]] = [result[j], result[i]];
-  }
-  return result;
+  return shuffleArray(items, rng);
 }
 
 // The conservative grid is built once; NPCs only search when choosing a destination.
