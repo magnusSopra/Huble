@@ -3854,7 +3854,7 @@ void main() {
         <a class="brand" href="#" aria-label="Workdayle home"><span class="brand-symbol">w.</span>workdayle<span class="brand-dot"></span></a>
         <div class="location"><span class="live-dot"></span> SOPRA STERIA <span class="location-divider">/</span> STAVANGER <span class="location-tag">OFFICE HOURS</span></div>
         <div class="run-clock" aria-label="Career completion timer"><span id="timer-label">TIME</span><strong id="run-time">00:00</strong><small id="best-time">PB --:--</small></div>
-        <div class="top-actions"><button id="stats-toggle" class="secondary compact-button" aria-controls="sidebar" aria-expanded="true" title="Tab in the office / M anywhere">Hide stats</button><button id="test-menu" class="secondary compact-button" title="F2: developer test mode">Test mode</button><button id="sound" class="icon-button" aria-label="Mute audio">${Jt("sound")}</button><button id="pause" class="icon-button" aria-label="Pause game">${Jt("pause")}</button></div>
+        <div class="top-actions"><a id="exit-huble" class="secondary compact-button" href="/" title="Back to Huble">Huble</a><button id="stats-toggle" class="secondary compact-button" aria-controls="sidebar" aria-expanded="true" title="Tab in the office / M anywhere">Hide stats</button><button id="test-menu" class="secondary compact-button" title="F2: developer test mode">Test mode</button><button id="sound" class="icon-button" aria-label="Mute audio">${Jt("sound")}</button><button id="pause" class="icon-button" aria-label="Pause game">${Jt("pause")}</button></div>
       </header>
       <aside id="sidebar" class="sidebar">
         <div class="eyebrow">EMPLOYEE DASHBOARD <span>01</span></div>
