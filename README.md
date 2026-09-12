@@ -1,12 +1,12 @@
 # Huble
 
 Huble is a hub for a small collection of office games. It currently hosts
-two games, with more on the way:
+three games:
 
 - **🏢 [Kontorle](#kontorle)** — a [Globle](https://globle-game.com/)-style
   guessing game built around your office floor plan.
 - **🧩 [Kundle](#kundle)** — a daily client/company guessing game.
-- More games coming soon.
+- **🏙️ [Workdayle](#workdayle)** — a 3D corporate-comedy arcade game.
 
 Open **http://localhost:3000** for the Huble hub (an iPad-style home
 screen of app icons); click an icon to launch a game.
@@ -53,6 +53,31 @@ Copy-Item -Recurse dist ..\..\public\kundle
 
 `games/kundle/vite.config.ts` sets `base: '/kundle/'` so built asset paths
 resolve correctly under that subpath instead of the site root.
+
+## Workdayle
+
+A first-person 3D office game (Vite + vanilla JS + Three.js): climb the
+corporate ladder floor by floor, complete tasks/minigames, and face off
+against boss performance reviews, with a career save (`localStorage`)
+and a CEO victory parade cinematic.
+
+Source lives in `games/workdayle/` (pulled from
+[Magnus07-cloud/Workdayle](https://github.com/Magnus07-cloud/Workdayle))
+and is built to static assets committed under `public/workdayle/`, so
+Express serves it at `/workdayle/` — no extra server code needed. To
+rebuild after pulling upstream changes:
+
+```powershell
+cd games/workdayle
+npm install
+npm run build
+# then copy the output into public/workdayle/, e.g.:
+Remove-Item -Recurse -Force ..\..\public\workdayle
+Copy-Item -Recurse dist ..\..\public\workdayle
+```
+
+`games/workdayle/vite.config.js` sets `base: '/workdayle/'` so built asset
+paths resolve correctly under that subpath instead of the site root.
 
 ## Requirements
 
@@ -105,8 +130,11 @@ public/
   js/, css/      Frontend logic and styles (vanilla JS, canvas-based)
   kundle/        Built Kundle static assets (served at /kundle/, do not edit
                  directly — rebuild from games/kundle/ instead)
+  workdayle/     Built Workdayle static assets (served at /workdayle/, do
+                 not edit directly — rebuild from games/workdayle/ instead)
 games/
   kundle/        Kundle source project (Vite + React + TypeScript)
+  workdayle/     Workdayle source project (Vite + vanilla JS + Three.js)
 data/            SQLite database file (gitignored)
 ```
 
