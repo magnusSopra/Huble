@@ -235,6 +235,7 @@ class Workdayle {
       this.ending = null;
       this.parade?.dispose();
       this.parade = null;
+      this.audio.stopBossMusic();
       this.audio.stopCEO();
       this.state = new GameState();
       this.run = new RunClock(this.state);
@@ -662,6 +663,8 @@ class Workdayle {
     if (this.arena) { this.scene.remove(this.arena.group); this.arena.dispose(); }
     this.effects.reset();
     const boss = BOSSES[this.state.floor];
+    this.audio.stopBossMusic();
+    this.audio.startBossMusic(boss);
     this.arena = createArena(boss, this.state.floor);
     const arena = this.arena;
     arena.bossMesh.visible = false;
@@ -713,6 +716,7 @@ class Workdayle {
   }
 
   endCombat(won) {
+    this.audio.stopBossMusic();
     this.fists.visible = false;
     this.warningRing.visible = false;
     this.effects.reset();
@@ -762,6 +766,7 @@ class Workdayle {
   showEnding(skip = false) {
     this.parade?.dispose();
     this.parade = null;
+    this.audio.stopBossMusic();
     this.audio.stopCEO();
     this.ui.closeModal();
     this.fists.visible = false;
@@ -842,6 +847,7 @@ class Workdayle {
     if (!['office', 'combat', 'minigame', 'parade', 'reveal', 'cutscene', 'intro'].includes(this.mode)) return;
     this.pauseFrom = this.mode;
     this.audio.pauseCEO();
+    this.audio.pauseBossMusic();
     if (this.mode === 'minigame') {
       this.mini.suspend?.();
       this.pausedMini = document.createElement('div');
@@ -861,6 +867,7 @@ class Workdayle {
     const mode = this.pauseFrom;
     this.setMode(mode);
     if (this.audio.hasCEOTrack()) this.audio.resumeCEO();
+    if (this.audio.hasBossMusic() && ['combat', 'intro'].includes(mode)) this.audio.resumeBossMusic();
     if (mode === 'cutscene') this.ui.show('cinematic-layer', true);
     if (mode === 'minigame') {
       this.ui.elements.modal.innerHTML = '';

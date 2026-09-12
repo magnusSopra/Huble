@@ -1,4 +1,4 @@
-import { randomChoice, shuffleArray } from './rng.js';
+import { randomChoice, shuffleArray, shuffleChoiceTexts, shuffleChoices } from './rng.js';
 
 const config = (label, duration, total, instructions, keys = 'Tab to move · Enter to choose') => ({ label, duration, total, instructions, keys });
 
@@ -27,10 +27,35 @@ const note = (label, text) => `<p class="mg-note"><span>${html(label)}</span>${h
 const button = (action, label, value = '', extra = '') => `<button type="button" class="mg-choice" data-action="${action}" data-value="${html(value)}" ${extra}>${label}</button>`;
 const primary = (action, label, extra = '') => `<button type="button" class="mg-button mg-primary mg-wide" data-action="${action}" ${extra}>${label}</button>`;
 const shufflePrompt = (item) => {
-  const answers = item.answers.map((answer, index) => ({ answer, index }));
-  const shuffled = shuffleArray(answers);
-  return { ...item, answers: shuffled.map(option => option.answer), correct: shuffled.findIndex(option => option.index === item.correct) };
+  return { ...item, choices: shuffleChoiceTexts(item.answers, item.correct) };
 };
+export function buildScheduleChoices(scenario, rng = Math.random) {
+  return {
+    participants: shuffleChoices(scenario.participants.map(name => ({
+      value: name,
+      label: name,
+      isCorrect: scenario.correctParticipants.includes(name),
+    })), rng),
+    times: shuffleChoices(['09:00', '10:00', '11:00'].map(time => ({
+      value: time,
+      label: time,
+      isCorrect: time === scenario.slot,
+    })), rng),
+    rooms: shuffleChoices(['Fjord', 'Birch'].map(room => ({
+      value: room,
+      label: room,
+      isCorrect: room === scenario.room,
+    })), rng),
+  };
+}
+
+export function buildApprovalChoices(sheet, rng = Math.random) {
+  const sum = sheet.hours.reduce((a, b) => a + b, 0);
+  return shuffleChoices([
+    { value: 'yes', label: '✓ Approve', isCorrect: sum === sheet.claimed },
+    { value: 'no', label: '× Reject', isCorrect: sum !== sheet.claimed },
+  ], rng);
+}
 const WIRES = [
   { name: 'Amber', symbol: '▲', color: 'amber' },
   { name: 'Blue', symbol: '●', color: 'blue' },
@@ -171,19 +196,23 @@ export function createOfficeMiniGame(BaseMiniGame) {
       this.resetCode = shuffleArray([0, 1, 2, 3]);
       this.cvFields = CV.map(field => {
         const variant = randomChoice(field.variants);
-        const shuffled = shufflePrompt({ answers: [variant.decoy, variant.right], correct: 1 });
-        return { label: field.label, ...variant, options: shuffled.answers, correct: shuffled.correct };
+        return { label: field.label, ...variant, options: shuffleChoiceTexts([variant.decoy, variant.right], 1) };
       });
       this.scheduleScenario = randomChoice(SCHEDULE_SCENARIOS);
-      this.approvals = shuffleArray(APPROVALS.map(sheet => ({ ...sheet, hours: [...sheet.hours] })));
+      this.scheduleChoices = buildScheduleChoices(this.scheduleScenario);
+      this.approvals = shuffleArray(APPROVALS.map(sheet => {
+        const prepared = { ...sheet, hours: [...sheet.hours] };
+        return { ...prepared, choices: buildApprovalChoices(prepared) };
+      }));
       this.renameItems = shuffleArray(RENAMES.map(shufflePrompt));
       this.requirements = shuffleArray(REQUIREMENTS.map(shufflePrompt));
       this.sheetSteps = SPREADSHEET_STEPS.map(step => {
-        const shuffled = shufflePrompt({ answers: step.options, correct: step.correct });
-        return { ...step, options: shuffled.answers, correct: shuffled.correct };
+        return { ...step, options: shuffleChoiceTexts(step.options, step.correct) };
       });
       this.desktopItems = shuffleArray(FILES.map(item => ({ ...item })));
       this.mailItems = shuffleArray(MAIL.map(item => ({ ...item })));
+      this.desktopDestinations = shuffleArray(['Reports', 'Finance', 'Media']);
+      this.mailDestinations = shuffleArray(['Important', 'Spam', 'Client', 'Internal']);
       this.selected = null;
       this.finished = new Set();
       this.gauges = new Set();
@@ -275,7 +304,7 @@ export function createOfficeMiniGame(BaseMiniGame) {
     }
 
     renderCV() {
-      this.stage.innerHTML = `${note('HIRING BRIEF — USE THESE EXACT DETAILS', this.cvFields.map(field => `${field.label}: ${field.right}`).join(' · '))}<div class="mg-cv"><div class="mg-cv-name">Alex Morgan <span>CURRICULUM VITAE</span></div>${this.cvFields.map((field, index) => `<button type="button" class="mg-cv-field ${this.finished.has(index) ? 'mg-cv-fixed' : ''}" data-action="cv-field" data-value="${index}" ${this.finished.has(index) ? 'disabled' : ''}><span>${field.label}</span><strong>${html(this.finished.has(index) ? field.right : field.wrong)}</strong><span aria-label="${this.finished.has(index) ? 'Fixed' : 'Edit'}">${this.finished.has(index) ? '✓' : '↗'}</span></button>`).join('')}</div>${this.cvField !== null ? `<div class="mg-inline-editor"><strong>Replace ${this.cvFields[this.cvField].label.toLowerCase()} with:</strong><div class="mg-answers">${this.cvFields[this.cvField].options.map((answer, i) => button('cv-fix', html(answer), i)).join('')}</div></div>` : ''}`;
+      this.stage.innerHTML = `${note('HIRING BRIEF — USE THESE EXACT DETAILS', this.cvFields.map(field => `${field.label}: ${field.right}`).join(' · '))}<div class="mg-cv"><div class="mg-cv-name">Alex Morgan <span>CURRICULUM VITAE</span></div>${this.cvFields.map((field, index) => `<button type="button" class="mg-cv-field ${this.finished.has(index) ? 'mg-cv-fixed' : ''}" data-action="cv-field" data-value="${index}" ${this.finished.has(index) ? 'disabled' : ''}><span>${field.label}</span><strong>${html(this.finished.has(index) ? field.right : field.wrong)}</strong><span aria-label="${this.finished.has(index) ? 'Fixed' : 'Edit'}">${this.finished.has(index) ? '✓' : '↗'}</span></button>`).join('')}</div>${this.cvField !== null ? `<div class="mg-inline-editor"><strong>Replace ${this.cvFields[this.cvField].label.toLowerCase()} with:</strong><div class="mg-answers">${this.cvFields[this.cvField].options.map((choice, i) => button('cv-fix', html(choice.text), i)).join('')}</div></div>` : ''}`;
       this.setFeedback('Select an inaccurate field. The hiring brief is the source of truth.');
     }
 
@@ -285,20 +314,20 @@ export function createOfficeMiniGame(BaseMiniGame) {
     }
 
     renderSchedule() {
-      const { calendar, prompt, participants } = this.scheduleScenario;
-      this.stage.innerHTML = `<div class="mg-calendar-wrap"><table class="mg-calendar"><caption>Today · a 30-minute review</caption><thead><tr><th scope="col">Calendar</th><th scope="col">09:00</th><th scope="col">10:00</th><th scope="col">11:00</th></tr></thead><tbody>${calendar.map(row => `<tr><th scope="row">${row[0]}</th>${row.slice(1).map(cell => `<td class="${cell === 'Free' ? 'mg-calendar-free' : 'mg-calendar-busy'}">${cell}</td>`).join('')}</tr>`).join('')}</tbody></table></div><fieldset class="mg-fieldset"><legend>${prompt}</legend><div class="mg-invite-options">${participants.map(name => `<label><input type="checkbox" data-input="participant" value="${name}" ${this.participants.has(name) ? 'checked' : ''}>${name}</label>`).join('')}</div></fieldset><div class="mg-schedule-options"><fieldset class="mg-fieldset"><legend>Time</legend>${['09:00', '10:00', '11:00'].map(time => button('slot', time, time, `aria-pressed="${this.slot === time}"`)).join('')}</fieldset><fieldset class="mg-fieldset"><legend>Room</legend>${['Fjord', 'Birch'].map(room => button('room', room, room, `aria-pressed="${this.room === room}"`)).join('')}</fieldset></div>${primary('book', 'Book the review')}`;
+      const { calendar, prompt } = this.scheduleScenario;
+      this.stage.innerHTML = `<div class="mg-calendar-wrap"><table class="mg-calendar"><caption>Today · a 30-minute review</caption><thead><tr><th scope="col">Calendar</th><th scope="col">09:00</th><th scope="col">10:00</th><th scope="col">11:00</th></tr></thead><tbody>${calendar.map(row => `<tr><th scope="row">${row[0]}</th>${row.slice(1).map(cell => `<td class="${cell === 'Free' ? 'mg-calendar-free' : 'mg-calendar-busy'}">${cell}</td>`).join('')}</tr>`).join('')}</tbody></table></div><fieldset class="mg-fieldset"><legend>${prompt}</legend><div class="mg-invite-options">${this.scheduleChoices.participants.map(choice => `<label><input type="checkbox" data-input="participant" value="${choice.value}" ${this.participants.has(choice.value) ? 'checked' : ''}>${choice.label}</label>`).join('')}</div></fieldset><div class="mg-schedule-options"><fieldset class="mg-fieldset"><legend>Time</legend>${this.scheduleChoices.times.map(choice => button('slot', choice.label, choice.value, `aria-pressed="${this.slot === choice.value}"`)).join('')}</fieldset><fieldset class="mg-fieldset"><legend>Room</legend>${this.scheduleChoices.rooms.map(choice => button('room', choice.label, choice.value, `aria-pressed="${this.room === choice.value}"`)).join('')}</fieldset></div>${primary('book', 'Book the review')}`;
       this.setFeedback(`Find a column where ${this.scheduleScenario.correctParticipants.join(', ')} and one room are all free.`);
     }
 
     renderApproval() {
       const sheet = this.approvals[this.progress], sum = sheet.hours.reduce((a, b) => a + b, 0);
-      this.stage.innerHTML = `<div class="mg-approval"><div class="mg-form-heading"><strong>${sheet.name}’s timesheet</strong><span>${this.progress + 1} / 3</span></div><div class="mg-audit-days">${DAYS.map((day, i) => `<div><span>${day}</span><strong>${sheet.hours[i]}h</strong></div>`).join('')}</div><div class="mg-claimed"><span>Claimed total</span><strong>${sheet.claimed}h</strong></div><div class="mg-calculated">${this.showTotal ? `Daily entries add up to <strong>${sum}h</strong>` : '<button type="button" class="mg-text-button" data-action="total">Add the daily hours for me</button>'}</div></div>${note('APPROVAL RULE', 'Approve if the claimed total equals the sum of daily hours. Reject if they differ.')}<div class="mg-choice-grid">${button('approve', '✓ Approve', 'yes')}${button('approve', '× Reject', 'no')}</div>`;
+      this.stage.innerHTML = `<div class="mg-approval"><div class="mg-form-heading"><strong>${sheet.name}’s timesheet</strong><span>${this.progress + 1} / 3</span></div><div class="mg-audit-days">${DAYS.map((day, i) => `<div><span>${day}</span><strong>${sheet.hours[i]}h</strong></div>`).join('')}</div><div class="mg-claimed"><span>Claimed total</span><strong>${sheet.claimed}h</strong></div><div class="mg-calculated">${this.showTotal ? `Daily entries add up to <strong>${sum}h</strong>` : '<button type="button" class="mg-text-button" data-action="total">Add the daily hours for me</button>'}</div></div>${note('APPROVAL RULE', 'Approve if the claimed total equals the sum of daily hours. Reject if they differ.')}<div class="mg-choice-grid">${sheet.choices.map(choice => button('approve', choice.label, choice.value)).join('')}</div>`;
       this.setFeedback('Read the hours. Use the calculator if you’d like a second opinion.');
     }
 
     renderRename() {
       const item = this.renameItems[this.progress];
-      this.stage.innerHTML = `<div class="mg-filename"><span aria-hidden="true">▱</span><div><small>CURRENT FILENAME</small><strong>${html(item.original)}</strong></div></div>${note('FILE BRIEF', item.brief)}${note('CONVENTION', 'client_kind_YYYY-MM-DD.extension')}<div class="mg-answers mg-code-answers">${item.answers.map((answer, i) => button('rename-choice', html(answer), i)).join('')}</div>`;
+      this.stage.innerHTML = `<div class="mg-filename"><span aria-hidden="true">▱</span><div><small>CURRENT FILENAME</small><strong>${html(item.original)}</strong></div></div>${note('FILE BRIEF', item.brief)}${note('CONVENTION', 'client_kind_YYYY-MM-DD.extension')}<div class="mg-answers mg-code-answers">${item.choices.map((choice, i) => button('rename-choice', html(choice.text), i)).join('')}</div>`;
       this.setFeedback('Match the client, kind, date and extension. Every part matters.');
     }
 
@@ -306,20 +335,20 @@ export function createOfficeMiniGame(BaseMiniGame) {
 
     renderSorting() {
       const mail = this.task.type === 'sortmail';
-      const destinations = mail ? ['Important', 'Spam', 'Client', 'Internal'] : ['Reports', 'Finance', 'Media'];
+      const destinations = mail ? this.mailDestinations : this.desktopDestinations;
       this.stage.innerHTML = `${note(mail ? 'SORTING RULES' : 'FOLDER RULES', mail ? 'Urgent action → Important · unsolicited prizes → Spam · client contact → Client · team news → Internal' : 'Report PDFs → Reports · workbooks → Finance · images → Media')}<div class="mg-sort-sources">${this.sortingItems().map((item, index) => this.finished.has(index) ? '' : `<button type="button" class="mg-sort-card" draggable="true" data-action="select-item" data-value="${index}" aria-pressed="${this.selected === index}"><span class="mg-file-glyph" aria-hidden="true">${mail ? '✉' : '▱'}</span><span><strong>${html(item.label)}</strong><small>${html(item.detail)}</small></span><span aria-hidden="true">${this.selected === index ? '✓' : '⋮⋮'}</span></button>`).join('')}</div><div class="mg-sort-destinations">${destinations.map(destination => `<button type="button" class="mg-folder" data-action="destination" data-value="${destination}"><span aria-hidden="true">${mail ? '▤' : '▱'}</span><strong>${destination}</strong><small>${[...this.finished].filter(i => this.sortingItems()[i].destination === destination).length} filed</small></button>`).join('')}</div>`;
       this.setFeedback(this.selected === null ? 'Drag an item into a destination, or click an item first.' : `Selected: ${this.sortingItems()[this.selected].label}. Choose its destination.`);
     }
 
     renderSheet() {
       const step = this.sheetSteps[this.progress];
-      this.stage.innerHTML = `<div class="mg-sheet-wrap"><table class="mg-sheet"><caption>Stationery budget</caption><thead><tr><th></th><th>A · Item</th><th>B · Qty</th><th>C · Price</th><th>D · Total</th></tr></thead><tbody><tr><th scope="row">2</th><td>Paper</td><td>2</td><td>5</td><td>${button('cell', this.progress > 0 ? '10 ✓' : '7', 'D2', 'aria-label="Cell D2"')}</td></tr><tr><th scope="row">3</th><td>Pens</td><td>3</td><td>2</td><td>${button('cell', '6', 'D3', 'aria-label="Cell D3"')}</td></tr><tr><th scope="row">4</th><td colspan="3">Grand total</td><td>${button('cell', this.progress > 1 ? '16 ✓' : '5', 'D4', 'aria-label="Cell D4"')}</td></tr></tbody></table></div>${note('AUDIT NOTE', step.note)}${this.cell === step.target ? `<div class="mg-formula-editor"><span>FORMULA FOR ${step.target}</span><div class="mg-answers mg-code-answers">${step.options.map((formula, index) => button('formula', html(formula), index)).join('')}</div></div>` : '<p class="mg-upload-note">Select the cell named in the audit note.</p>'}`;
+      this.stage.innerHTML = `<div class="mg-sheet-wrap"><table class="mg-sheet"><caption>Stationery budget</caption><thead><tr><th></th><th>A · Item</th><th>B · Qty</th><th>C · Price</th><th>D · Total</th></tr></thead><tbody><tr><th scope="row">2</th><td>Paper</td><td>2</td><td>5</td><td>${button('cell', this.progress > 0 ? '10 ✓' : '7', 'D2', 'aria-label="Cell D2"')}</td></tr><tr><th scope="row">3</th><td>Pens</td><td>3</td><td>2</td><td>${button('cell', '6', 'D3', 'aria-label="Cell D3"')}</td></tr><tr><th scope="row">4</th><td colspan="3">Grand total</td><td>${button('cell', this.progress > 1 ? '16 ✓' : '5', 'D4', 'aria-label="Cell D4"')}</td></tr></tbody></table></div>${note('AUDIT NOTE', step.note)}${this.cell === step.target ? `<div class="mg-formula-editor"><span>FORMULA FOR ${step.target}</span><div class="mg-answers mg-code-answers">${step.options.map((choice, index) => button('formula', html(choice.text), index)).join('')}</div></div>` : '<p class="mg-upload-note">Select the cell named in the audit note.</p>'}`;
       this.setFeedback(`Select ${step.target}, then choose its corrected formula.`);
     }
 
     renderRequirement() {
       const step = this.requirements[this.progress];
-      this.stage.innerHTML = `<div class="mg-clarification"><span>REQUEST ${this.progress + 1} / 3</span><blockquote>${html(step.request)}</blockquote></div>${note('CLARIFICATION HINT', step.hint)}<div class="mg-answers">${step.answers.map((answer, index) => button('requirement-choice', html(answer), index)).join('')}</div>`;
+      this.stage.innerHTML = `<div class="mg-clarification"><span>REQUEST ${this.progress + 1} / 3</span><blockquote>${html(step.request)}</blockquote></div>${note('CLARIFICATION HINT', step.hint)}<div class="mg-answers">${step.choices.map((choice, index) => button('requirement-choice', html(choice.text), index)).join('')}</div>`;
       this.setFeedback('A good question turns a vague request into something deliverable.');
     }
 
@@ -366,7 +395,7 @@ export function createOfficeMiniGame(BaseMiniGame) {
           this.refresh();
           this.focus('[data-action="cv-fix"]');
         } else if (action === 'cv-fix' && this.cvField !== null) {
-          if (index !== this.cvFields[this.cvField].correct) return this.mistake('That still doesn’t match the hiring brief. Choose the accurate detail.', 0.4);
+          if (!this.cvFields[this.cvField].options[index]?.isCorrect) return this.mistake('That still doesn’t match the hiring brief. Choose the accurate detail.', 0.4);
           this.finished.add(this.cvField);
           this.cvField = null;
           this.next();
@@ -385,23 +414,26 @@ export function createOfficeMiniGame(BaseMiniGame) {
         if (action === 'slot' && ['09:00', '10:00', '11:00'].includes(value)) { this.slot = value; this.syncSchedule(); this.refresh(); }
         else if (action === 'room' && ['Fjord', 'Birch'].includes(value)) { this.room = value; this.syncSchedule(); this.refresh(); }
         else if (action === 'book') {
-          const wanted = this.scheduleScenario.correctParticipants;
-          const extra = this.scheduleScenario.participants.find(name => !wanted.includes(name));
+          const wanted = this.scheduleChoices.participants.filter(choice => choice.isCorrect).map(choice => choice.value);
+          const extra = this.scheduleChoices.participants.find(choice => !choice.isCorrect)?.value;
+          const chosenSlot = this.scheduleChoices.times.find(choice => choice.value === this.slot);
+          const chosenRoom = this.scheduleChoices.rooms.find(choice => choice.value === this.room);
           if (this.participants.size !== wanted.length || wanted.some(name => !this.participants.has(name))) return this.mistake(`Invite exactly ${wanted.join(' and ')}. ${extra} does not need this meeting.`, 0.3);
-          if (this.slot !== this.scheduleScenario.slot) return this.mistake(`${wanted.join(' and ')} are both free at ${this.scheduleScenario.slot}. Check that calendar column.`, 0.3);
-          if (this.room !== this.scheduleScenario.room) return this.mistake(`${this.scheduleScenario.room} is free at ${this.scheduleScenario.slot}. The other room is already booked.`, 0.3);
+          if (!chosenSlot?.isCorrect) return this.mistake(`${wanted.join(' and ')} are both free at ${this.scheduleScenario.slot}. Check that calendar column.`, 0.3);
+          if (!chosenRoom?.isCorrect) return this.mistake(`${this.scheduleScenario.room} is free at ${this.scheduleScenario.slot}. The other room is already booked.`, 0.3);
           this.complete();
         }
       } else if (type === 'approve') {
         if (action === 'total') { this.showTotal = true; this.refresh(); }
         else if (action === 'approve') {
           const sheet = this.approvals[this.progress], sum = sheet.hours.reduce((a, b) => a + b, 0);
-          if ((value === 'yes') !== (sum === sheet.claimed)) return this.mistake(`The entries add to ${sum}h; the claim is ${sheet.claimed}h. ${sum === sheet.claimed ? 'Approve the matching total.' : 'Reject this mismatch.'}`, 0.5);
+          const choice = sheet.choices.find(option => option.value === value);
+          if (!choice?.isCorrect) return this.mistake(`The entries add to ${sum}h; the claim is ${sheet.claimed}h. ${sum === sheet.claimed ? 'Approve the matching total.' : 'Reject this mismatch.'}`, 0.5);
           this.showTotal = false;
           this.next();
         }
       } else if (type === 'rename' && action === 'rename-choice') {
-        if (index !== this.renameItems[this.progress].correct) return this.mistake('Check the lowercase names, YYYY-MM-DD date, underscores and extension.', 0.4);
+        if (!this.renameItems[this.progress].choices[index]?.isCorrect) return this.mistake('Check the lowercase names, YYYY-MM-DD date, underscores and extension.', 0.4);
         this.next();
       } else if (type === 'desktop' || type === 'sortmail') {
         if (action === 'select-item' && this.sortingItems()[index] && !this.finished.has(index)) {
@@ -417,12 +449,12 @@ export function createOfficeMiniGame(BaseMiniGame) {
           this.refresh();
           this.focus('[data-action="formula"]');
         } else if (action === 'formula' && this.cell === this.sheetSteps[this.progress].target) {
-          if (index !== this.sheetSteps[this.progress].correct) return this.mistake(this.progress ? 'SUM(D2:D3) adds the two line totals.' : 'B2*C2 multiplies quantity by price.', 0.4);
+          if (!this.sheetSteps[this.progress].options[index]?.isCorrect) return this.mistake(this.progress ? 'SUM(D2:D3) adds the two line totals.' : 'B2*C2 multiplies quantity by price.', 0.4);
           this.cell = null;
           this.next();
         }
       } else if (type === 'requirement' && action === 'requirement-choice') {
-        if (index !== this.requirements[this.progress].correct) return this.mistake(this.requirements[this.progress].hint, 0.4);
+        if (!this.requirements[this.progress].choices[index]?.isCorrect) return this.mistake(this.requirements[this.progress].hint, 0.4);
         this.next();
       }
     }
@@ -457,7 +489,7 @@ export function createOfficeMiniGame(BaseMiniGame) {
     }
 
     syncSchedule() {
-      const wanted = this.scheduleScenario.correctParticipants;
+      const wanted = this.scheduleChoices.participants.filter(choice => choice.isCorrect).map(choice => choice.value);
       this.progress = Number(this.participants.size === wanted.length && wanted.every(name => this.participants.has(name))) + Number(this.slot === this.scheduleScenario.slot) + Number(this.room === this.scheduleScenario.room);
       this.syncReadouts();
     }

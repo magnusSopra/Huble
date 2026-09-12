@@ -1,4 +1,4 @@
-import { randomInt, shuffleArray } from './rng.js';
+import { randomInt, shuffleArray, shuffleChoiceTexts, shuffleChoices } from './rng.js';
 
 const meeting = (label) => ({
   label, duration: 30, total: 8,
@@ -71,10 +71,11 @@ const html = value => String(value ?? '').replace(/[&<>"']/g, char => ({ '&': '&
 const primary = (action, text, extra = '') => `<button type="button" class="mg-button mg-primary mg-wide" data-action="${action}" ${extra}>${text}</button>`;
 const person = '<span class="mg-walker-head"></span><span class="mg-walker-body"></span><span class="mg-walker-leg mg-leg-left"></span><span class="mg-walker-leg mg-leg-right"></span>';
 const shufflePrompt = (item) => {
-  const answers = item.answers.map((answer, index) => ({ answer, index }));
-  const shuffled = shuffleArray(answers);
-  return { ...item, answers: shuffled.map(option => option.answer), correct: shuffled.findIndex(option => option.index === item.correct) };
+  return { ...item, choices: shuffleChoiceTexts(item.answers, item.correct) };
 };
+export function buildDelegationStaffChoices(staff = STAFF, rng = Math.random) {
+  return shuffleChoices(staff.map((member, staffId) => ({ ...member, staffId })), rng);
+}
 
 // Like the office extension, this shares the host's timer, retries and reward lifecycle.
 export function createMultitaskMiniGame(BaseMiniGame) {
@@ -111,6 +112,7 @@ export function createMultitaskMiniGame(BaseMiniGame) {
       this.jobs = shuffleArray(JOBS.map(job => ({ ...job })));
       this.reelOffset = randomInt(0, REELS.length - 1);
       this.aiProviders = shuffleArray(AI_PROVIDERS);
+      this.staffChoices = buildDelegationStaffChoices();
       this.excuses = shuffleArray([
         { value: 'client', label: 'Client deadline today. I’ll send written input.', hotkey: 1 },
         { value: 'moon', label: 'The moon has booked my calendar for cheese research.', hotkey: 2 },
@@ -200,7 +202,7 @@ export function createMultitaskMiniGame(BaseMiniGame) {
       const question = this.questions[this.questionIndex];
       const panel = this.root.querySelector('.mg-direct-question');
       panel.hidden = false;
-      panel.innerHTML = `<h4>${question.speaker}: “${question.prompt}”</h4><span class="mg-question-time" role="status"></span><p class="mg-note"><span>STOP SCROLLING · YOUR REPLY SHOULD</span>${question.hint}</p><div class="mg-answers">${question.answers.map((answer, index) => `<button type="button" class="mg-choice" data-action="answer-question" data-value="${index}"><kbd>${index + 1}</kbd><span>${answer}</span></button>`).join('')}</div>`;
+      panel.innerHTML = `<h4>${question.speaker}: “${question.prompt}”</h4><span class="mg-question-time" role="status"></span><p class="mg-note"><span>STOP SCROLLING · YOUR REPLY SHOULD</span>${question.hint}</p><div class="mg-answers">${question.choices.map((choice, index) => `<button type="button" class="mg-choice" data-action="answer-question" data-value="${index}"><kbd>${index + 1}</kbd><span>${html(choice.text)}</span></button>`).join('')}</div>`;
       this.setFeedback('Direct question! Reels and nod timing pause, but your task timer keeps running.');
       this.paintMeeting();
       this.focus('[data-action="answer-question"]');
@@ -217,7 +219,7 @@ export function createMultitaskMiniGame(BaseMiniGame) {
         if (action === 'answer-question' && this.cooldown === 0 && /^[0-2]$/.test(String(value))) {
           this.cooldown = .35;
           const question = this.questions[this.questionIndex];
-          if (Number(value) !== question.correct) return this.mistake(`Try again: ${question.hint} −0.75s`, .75);
+          if (!question.choices[Number(value)]?.isCorrect) return this.mistake(`Try again: ${question.hint} −0.75s`, .75);
           this.questionIndex++;
           this.questionActive = false;
           this.root.querySelector('.mg-direct-question').hidden = true;
@@ -314,7 +316,7 @@ export function createMultitaskMiniGame(BaseMiniGame) {
 
     renderDelegation() {
       const job = this.jobs[this.progress];
-      this.stage.innerHTML = `<div class="mg-job-brief"><span>JOB ${this.progress + 1}/2</span><h4>${job.title}</h4><p>${job.hint}</p></div><div class="mg-staff-list">${STAFF.map((staff, index) => `<button type="button" class="mg-choice" data-action="employee" data-value="${index}" aria-pressed="${this.selected === index}"><kbd>${index + 1}</kbd><span><strong>${staff.name}</strong><small>${staff.skill}</small></span></button>`).join('')}</div>${primary('delegate-work', 'DELEGATE → <kbd>D</kbd>')}<p class="mg-delegate-status" role="status">Select expertise, not whoever looks least busy.</p><div class="mg-departure-scene" aria-label="Selected employee heading off to work" hidden><div class="mg-walker" role="img" aria-label="Employee walking to the job">${person}</div><span class="mg-job-door">TO WORK →</span></div>`;
+      this.stage.innerHTML = `<div class="mg-job-brief"><span>JOB ${this.progress + 1}/2</span><h4>${job.title}</h4><p>${job.hint}</p></div><div class="mg-staff-list">${this.staffChoices.map((staff, index) => `<button type="button" class="mg-choice" data-action="employee" data-value="${staff.staffId}" aria-pressed="${this.selected === staff.staffId}"><kbd>${index + 1}</kbd><span><strong>${staff.name}</strong><small>${staff.skill}</small></span></button>`).join('')}</div>${primary('delegate-work', 'DELEGATE → <kbd>D</kbd>')}<p class="mg-delegate-status" role="status">Select expertise, not whoever looks least busy.</p><div class="mg-departure-scene" aria-label="Selected employee heading off to work" hidden><div class="mg-walker" role="img" aria-label="Employee walking to the job">${person}</div><span class="mg-job-door">TO WORK →</span></div>`;
       this.setFeedback('Pick the right expertise, then explicitly delegate the job.');
     }
 
@@ -434,7 +436,12 @@ export function createMultitaskMiniGame(BaseMiniGame) {
       if (shortcut || spaceAction) {
         event.preventDefault();
         event.stopPropagation();
-        if (!event.repeat && this.state === 'playing') this.act(shortcut || 'primary', Number(key) - 1);
+        if (!event.repeat && this.state === 'playing') {
+          const value = this.task.type === 'delegate' && shortcut === 'employee'
+            ? this.staffChoices[Number(key) - 1]?.staffId
+            : Number(key) - 1;
+          this.act(shortcut || 'primary', value);
+        }
         return;
       }
       if (key === ' ' || key === 'enter') {

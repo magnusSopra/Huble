@@ -6,18 +6,20 @@ const OPTIONAL_BOSS_AUDIO = import.meta.glob('../assets/audio/bosses/*.{mp3,ogg,
 });
 
 const CEO_BASE_VOLUME = 0.55;
+const BOSS_MUSIC_VOLUME = 0.48;
+const AUDIO_EXTENSION_PATTERN = '(mp3|ogg|wav|m4a|aac|flac)';
+const escapePattern = (value) => String(value).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 const KJELL_CUES = {
   cmon: {
     filename: 'kjell_cmon.mp3',
-    matcher: /kjell_cmon\.(mp3|ogg|wav|m4a|aac|flac)$/i,
     warning: '[Audio] Warning: Kjell CMON sound not found.',
   },
   random: {
     filename: 'kjell_random.mp3',
-    matcher: /kjell_random\.(mp3|ogg|wav|m4a|aac|flac)$/i,
     warning: '[Audio] Warning: Kjell random voice sound not found.',
   },
 };
+const bossMusicWarning = (boss) => `[Audio] Warning: ${boss.name} boss music not found.`;
 
 export class GameAudio {
   constructor() {
@@ -32,6 +34,7 @@ export class GameAudio {
   set muted(value) {
     this._muted = Boolean(value);
     if (this.ceoTrack) this.ceoTrack.muted = this._muted;
+    if (this.bossTrack) this.bossTrack.muted = this._muted;
   }
 
   startCEO(notify, tracks = CEO_TRACKS) {
@@ -110,16 +113,23 @@ export class GameAudio {
     this.ceoPhase = null;
   }
 
+  resolveOptionalBossAsset(asset, tracks = OPTIONAL_BOSS_AUDIO) {
+    if (!asset?.filename) return null;
+    const stem = asset.filename.replace(/\.[^.]+$/, '');
+    const matcher = asset.matcher ?? new RegExp(`${escapePattern(stem)}\\.${AUDIO_EXTENSION_PATTERN}$`, 'i');
+    const entry = Object.entries(tracks).find(([path]) => matcher.test(path.replaceAll('\\', '/')));
+    if (entry) return entry[1];
+    if (!this.assetWarnings.has(asset.filename)) {
+      this.assetWarnings.add(asset.filename);
+      console.warn(`${asset.warning} Expected assets/audio/bosses/${asset.filename}`);
+    }
+    return null;
+  }
+
   resolveOptionalBossCue(kind, tracks = OPTIONAL_BOSS_AUDIO) {
     const cue = KJELL_CUES[kind];
     if (!cue) return null;
-    const entry = Object.entries(tracks).find(([path]) => cue.matcher.test(path.replaceAll('\\', '/')));
-    if (entry) return entry[1];
-    if (!this.assetWarnings.has(cue.filename)) {
-      this.assetWarnings.add(cue.filename);
-      console.warn(`${cue.warning} Expected assets/audio/bosses/${cue.filename}`);
-    }
-    return null;
+    return this.resolveOptionalBossAsset(cue, tracks);
   }
 
   playKjellCue(kind) {
@@ -139,6 +149,54 @@ export class GameAudio {
       console.warn(`[Audio] Warning: ${label} playback failed.`, error);
     });
     return true;
+  }
+
+  hasBossMusic() { return Boolean(this.bossTrack); }
+
+  startBossMusic(boss, tracks = OPTIONAL_BOSS_AUDIO) {
+    const stem = boss?.bossMusic;
+    if (!stem) return false;
+    const filename = `${stem}.mp3`;
+    const source = this.resolveOptionalBossAsset({
+      filename,
+      warning: bossMusicWarning(boss),
+    }, tracks);
+    if (!source) return false;
+    if (this.bossTrack && this.bossTrack.dataset?.source === source) {
+      this.resumeBossMusic();
+      return true;
+    }
+    this.stopBossMusic();
+    this.bossTrack = new Audio(source);
+    this.bossTrack.dataset.source = source;
+    this.bossTrack.preload = 'auto';
+    this.bossTrack.loop = true;
+    this.bossTrack.volume = BOSS_MUSIC_VOLUME;
+    this.bossTrack.muted = this.muted;
+    this.bossTrack.addEventListener('error', () => {
+      console.warn(`[Audio] Warning: ${boss.name} boss music could not be loaded.`);
+    }, { once: true });
+    this.resumeBossMusic();
+    return true;
+  }
+
+  resumeBossMusic() {
+    if (!this.bossTrack) return;
+    const track = this.bossTrack;
+    track.play().catch(error => {
+      if (error?.name === 'AbortError' || track !== this.bossTrack) return;
+      console.warn('[Audio] Warning: Boss music playback failed.', error);
+    });
+  }
+
+  pauseBossMusic() { this.bossTrack?.pause(); }
+
+  stopBossMusic() {
+    if (!this.bossTrack) return;
+    this.bossTrack.pause();
+    this.bossTrack.removeAttribute('src');
+    this.bossTrack.load();
+    this.bossTrack = null;
   }
 
   start() {
@@ -180,6 +238,7 @@ export class GameAudio {
   update(dt, mode) {
     if (!['office', 'combat', 'final', 'ending'].includes(mode)) return;
     const combat = mode === 'combat' || mode === 'final';
+    if (combat && this.bossTrack) return;
     if (this.mode !== mode) {
       this.mode = mode;
       this.clock = 0;

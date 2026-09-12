@@ -91,8 +91,8 @@ export function solveMiniGame(mini) {
       }
     }
   } else if (type === 'delegate') {
-    for (const employee of [0, 1]) {
-      click('employee', employee);
+    for (const job of mini.jobs) {
+      click('employee', job.expert);
       click('delegate-work');
       waitFor(() => completed() || !mini.departure, 'the employee reaching their job');
     }
@@ -116,8 +116,16 @@ export function solveMiniGame(mini) {
       click('primary');
     }
   } else if (['repair', 'docs', 'deploy', 'jira', 'email', 'client', 'help', 'sql'].includes(type)) {
-    const answers = { repair: [1, 3, 2, 0], docs: [2, 3, 0, 1], deploy: [2, 3, 0, 1], jira: [2, 3, 1, 0], email: [1, 0, 2], client: [1, 0, 2], help: [0, 1, 2], sql: [1, 0, 2] };
-    for (const answer of answers[type]) { waitFor(() => mini.cooldown === 0, 'the next choice'); click('choose', answer); }
+    const answers = { repair: [1, 3, 2, 0], docs: [2, 3, 0, 1], deploy: [2, 3, 0, 1], jira: [2, 3, 1, 0] };
+    if (answers[type]) {
+      for (const answer of answers[type]) { waitFor(() => mini.cooldown === 0, 'the next choice'); click('choose', answer); }
+    } else {
+      while (!completed()) {
+        waitFor(() => mini.cooldown === 0, 'the next choice');
+        const prompt = type === 'sql' ? mini.sqlSteps[mini.progress] : mini.dialogues[mini.progress];
+        click('choose', prompt.choices.findIndex(choice => choice.isCorrect));
+      }
+    }
   } else if (type === 'password') {
     if (mini.memoryVisible) click('remember');
     for (const digit of '2413') click('digit', digit);
@@ -150,30 +158,39 @@ export function solveMiniGame(mini) {
     if (mini.root.querySelector('[data-action="hide-reset"]')) click('hide-reset');
     for (const index of [2, 0, 3, 1]) click('reset-key', index);
   } else if (type === 'cv') {
-    for (const index of [0, 1, 2, 3]) { click('cv-field', index); click('cv-fix', 1); }
+    for (const index of [0, 1, 2, 3]) {
+      click('cv-field', index);
+      click('cv-fix', mini.cvFields[index].options.findIndex(choice => choice.isCorrect));
+    }
   } else if (type === 'timesheet') {
     [8, 8, 7.5, 8, 6].forEach((value, index) => input(`[data-input="hours"][data-index="${index}"]`, value));
     click('submit-hours');
   } else if (type === 'schedule') {
-    for (const name of ['Nora', 'Aksel', 'Magnus']) {
+    const wanted = mini.scheduleChoices.participants.filter(choice => choice.isCorrect).map(choice => choice.value);
+    for (const choice of mini.scheduleChoices.participants) {
+      const name = choice.value;
       const checkbox = control(`[data-input="participant"][value="${name}"]`);
-      if (checkbox.checked !== (name !== 'Magnus')) checkbox.click();
+      if (checkbox.checked !== wanted.includes(name)) checkbox.click();
     }
-    click('slot', '10:00');
-    click('room', 'Fjord');
+    click('slot', mini.scheduleChoices.times.find(choice => choice.isCorrect).value);
+    click('room', mini.scheduleChoices.rooms.find(choice => choice.isCorrect).value);
     click('book');
   } else if (type === 'approve') {
-    for (const answer of ['no', 'yes', 'yes']) { click('total'); click('approve', answer); }
+    while (!completed()) {
+      click('total');
+      click('approve', mini.approvals[mini.progress].choices.find(choice => choice.isCorrect).value);
+    }
   } else if (type === 'rename') {
-    click('rename-choice', 0);
-    click('rename-choice', 1);
+    while (!completed()) click('rename-choice', mini.renameItems[mini.progress].choices.findIndex(choice => choice.isCorrect));
   } else if (type === 'desktop' || type === 'sortmail') {
-    const destinations = type === 'desktop' ? ['Reports', 'Finance', 'Media', 'Reports'] : ['Important', 'Spam', 'Client', 'Internal'];
-    destinations.forEach((destination, index) => { click('select-item', index); click('destination', destination); });
+    mini.sortingItems().forEach((item, index) => { click('select-item', index); click('destination', item.destination); });
   } else if (type === 'spreadsheet') {
-    for (const cell of ['D2', 'D4']) { click('cell', cell); click('formula', 1); }
+    for (const cell of ['D2', 'D4']) {
+      click('cell', cell);
+      click('formula', mini.sheetSteps[mini.progress].options.findIndex(choice => choice.isCorrect));
+    }
   } else if (type === 'requirement') {
-    for (const answer of [0, 1, 2]) click('requirement-choice', answer);
+    while (!completed()) click('requirement-choice', mini.requirements[mini.progress].choices.findIndex(choice => choice.isCorrect));
   }
 
   if (!completed()) fail('The controls did not complete the task.');

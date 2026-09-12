@@ -1,6 +1,6 @@
 import { OFFICE_GAMES, createOfficeMiniGame, NEW_TYPES } from './office-minigames.js';
 import { MULTITASK_GAMES, MULTITASK_TYPES, createMultitaskMiniGame } from './multitask-minigames.js';
-import { shuffleArray } from './rng.js';
+import { shuffleArray, shuffleChoiceTexts } from './rng.js';
 import './multitask-minigames.css';
 
 export { NEW_TYPES } from './office-minigames.js';
@@ -66,12 +66,9 @@ const REQUESTS = [
 
 const escapeHTML = (value) => String(value ?? '').replace(/[&<>"']/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[char]);
 const shufflePrompt = (item) => {
-  const answers = item.answers.map((answer, index) => ({ answer, index }));
-  const shuffled = shuffleArray(answers);
   return {
     ...item,
-    answers: shuffled.map(option => option.answer),
-    correct: shuffled.findIndex(option => option.index === item.correct),
+    choices: shuffleChoiceTexts(item.answers, item.correct),
   };
 };
 const formatPenalty = (seconds) => `${Number(seconds).toFixed(seconds % 1 ? 2 : 0).replace(/\.?0+$/, '')} SECOND${seconds === 1 ? '' : 'S'}`;
@@ -234,17 +231,17 @@ export class MiniGame {
 
   renderDialogue() {
     const question = this.dialogues[this.progress];
-    this.stage.innerHTML = `<div class="mg-message"><div class="mg-message-heading"><span class="mg-message-avatar" aria-hidden="true">${question.from.charAt(0)}</span><span>${escapeHTML(question.from)}</span><span class="mg-message-count">${this.progress + 1}/3</span></div><blockquote>${escapeHTML(question.message)}</blockquote></div><p class="mg-note"><span>YOUR BEST APPROACH</span>${escapeHTML(question.hint)}</p><div class="mg-answers">${this.answerButtons(question.answers)}</div>`;
+    this.stage.innerHTML = `<div class="mg-message"><div class="mg-message-heading"><span class="mg-message-avatar" aria-hidden="true">${question.from.charAt(0)}</span><span>${escapeHTML(question.from)}</span><span class="mg-message-count">${this.progress + 1}/3</span></div><blockquote>${escapeHTML(question.message)}</blockquote></div><p class="mg-note"><span>YOUR BEST APPROACH</span>${escapeHTML(question.hint)}</p><div class="mg-answers">${this.answerButtons(question.choices)}</div>`;
     this.setFeedback('Choose a reply. The hint is on your side.');
   }
 
-  answerButtons(answers) {
-    return answers.map((answer, i) => `<button type="button" class="mg-choice" data-action="choose" data-value="${i}"><kbd>${i + 1}</kbd><span>${escapeHTML(answer)}</span><span class="mg-choice-arrow" aria-hidden="true">↗</span></button>`).join('');
+  answerButtons(choices) {
+    return choices.map((choice, i) => `<button type="button" class="mg-choice" data-action="choose" data-value="${i}"><kbd>${i + 1}</kbd><span>${escapeHTML(choice.text)}</span><span class="mg-choice-arrow" aria-hidden="true">↗</span></button>`).join('');
   }
 
   renderSQL() {
     const step = this.sqlSteps[this.progress];
-    this.stage.innerHTML = `<div class="mg-terminal"><div class="mg-terminal-bar"><span class="mg-terminal-dots" aria-hidden="true">● ● ●</span><span>find_the_humans.sql</span></div><div class="mg-query-lines">${this.sqlSteps.map((item, i) => `<div><span class="mg-line-number">${i + 1}</span><code class="${i > this.progress ? 'mg-terminal-muted' : ''}">${i < this.progress ? escapeHTML(item.code) : i === this.progress ? '<span class="mg-editor-cursor">▍</span> choose the next piece' : '…'}</code></div>`).join('')}</div><div class="mg-query-result"><span>GOAL</span> Show the names of active employees.</div></div><p class="mg-note"><span>PLAIN-ENGLISH HINT</span>${escapeHTML(step.hint)}</p><div class="mg-answers mg-code-answers">${this.answerButtons(step.answers)}</div>`;
+    this.stage.innerHTML = `<div class="mg-terminal"><div class="mg-terminal-bar"><span class="mg-terminal-dots" aria-hidden="true">● ● ●</span><span>find_the_humans.sql</span></div><div class="mg-query-lines">${this.sqlSteps.map((item, i) => `<div><span class="mg-line-number">${i + 1}</span><code class="${i > this.progress ? 'mg-terminal-muted' : ''}">${i < this.progress ? escapeHTML(item.code) : i === this.progress ? '<span class="mg-editor-cursor">▍</span> choose the next piece' : '…'}</code></div>`).join('')}</div><div class="mg-query-result"><span>GOAL</span> Show the names of active employees.</div></div><p class="mg-note"><span>PLAIN-ENGLISH HINT</span>${escapeHTML(step.hint)}</p><div class="mg-answers mg-code-answers">${this.answerButtons(step.choices)}</div>`;
     this.setFeedback('Choose the code that matches the hint.');
   }
 
@@ -343,8 +340,9 @@ export class MiniGame {
     const question = this.dialogues?.[this.progress] || (type === 'sql' ? this.sqlSteps[this.progress] : null);
     if (this.cooldown > 0 || !Number.isInteger(index) || index < 0 || index >= (sequence ? 4 : question ? 3 : 0)) return;
     if (sequence && this.sequenceDone.includes(index)) return;
-    const correct = sequence ? sequence.order[this.progress] : question.correct;
-    if (index !== correct) {
+    const choice = question?.choices?.[index];
+    const correct = sequence ? sequence.order[this.progress] : null;
+    if ((sequence && index !== correct) || (!sequence && !choice?.isCorrect)) {
       this.cooldown = 0.3;
       this.mistake(sequence ? `Not quite. Next: ${sequence.steps[this.progress]}` : `Try again. ${question.hint}`, 0.75);
       return;

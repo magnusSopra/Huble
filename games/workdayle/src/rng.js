@@ -24,6 +24,18 @@ export function shuffleArray(items, rng = Math.random) {
   return result;
 }
 
+export function shuffleChoices(choices, rng = Math.random) {
+  return shuffleArray(choices.map(choice => ({ ...choice })), rng);
+}
+
+export function shuffleChoiceTexts(answers, correctIndex, rng = Math.random) {
+  return shuffleChoices(answers.map((text, index) => ({
+    text,
+    originalIndex: index,
+    isCorrect: index === correctIndex,
+  })), rng);
+}
+
 export function sampleSize(items, count, rng = Math.random) {
   return shuffleArray(items, rng).slice(0, Math.max(0, count));
 }

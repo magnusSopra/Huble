@@ -31,6 +31,7 @@ export const BOSSES = [
   {
     id: 'jill_guldhav', slug: 'jill_guldhav',
     name: 'Jill Guldhav', title: 'Office Manager', color: '#b36843',
+    bossMusic: 'jill_boss',
     hp: 120, damage: 13, speed: 1.7, windup: 1.25, attackDamageMode: 'absolute',
     intro: 'The candy bowl is complimentary. The performance review is not.',
     hurt: 'That is coming out of the office snack budget!',
@@ -45,6 +46,7 @@ export const BOSSES = [
   {
     id: 'sander_thomassen', slug: 'sander_thomassen',
     name: 'Sander Thomassen', title: 'Department Manager', color: '#697eaa',
+    bossMusic: 'sander_boss',
     hp: 180, damage: 16, speed: 1.95, windup: 1.2, attackDamageMode: 'absolute',
     intro: 'Your department is over budget. So is this floor.',
     hurt: 'I am going to need a spreadsheet for that.',
@@ -60,6 +62,7 @@ export const BOSSES = [
   {
     id: 'alf_gilroy', slug: 'alf_gilroy',
     name: 'Alf Gilroy', title: 'Executive Director', color: '#8a6ba3',
+    bossMusic: 'alf_boss',
     hp: 240, damage: 18, speed: 2.15, windup: 1.15, attackDamageMode: 'absolute',
     intro: 'Did you read DAILY DIGEST? No? Then APPS NYTT is coming your way.',
     hurt: 'This will be in the next newsletter.',
@@ -76,6 +79,7 @@ export const BOSSES = [
   {
     id: 'kjell_rusti', slug: 'kjell_rusti',
     name: 'Kjell Rusti', title: 'CEO', color: '#3d514a',
+    bossMusic: 'kjell_boss',
     hp: 320, damage: 21, speed: 2.3, windup: 1.15, attackDamageMode: 'absolute',
     intro: 'I have mastered every management technique. Including punching.',
     hurt: 'CMON!! That was not in the strategy!',
