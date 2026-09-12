@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Moon, RefreshCw, Sun } from 'lucide-react';
+import { Home, Moon, RefreshCw, Sun } from 'lucide-react';
 
 interface HeaderProps {
   onHelpClick: () => void;
@@ -48,6 +48,14 @@ export function Header({ onHelpClick, onRefreshClick }: HeaderProps) {
       <div className="app-header__titles">
         <h1 className="app-header__title">KUNDLE</h1>
       </div>
+      <a
+        href="/"
+        className="app-header__help app-header__home"
+        aria-label="Back to Huble"
+        title="Back to Huble"
+      >
+        <Home size={18} aria-hidden="true" />
+      </a>
       <button
         type="button"
         className="app-header__help app-header__refresh"
