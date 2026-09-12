@@ -1,34 +1,34 @@
-@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
 
 :root {
-  --bg: #fafbfa;
-  --surface: #ffffff;
-  --border: #dfe4e1;
-  --text: #202824;
-  --text-muted: #66726b;
-  --accent: #23634b;
-  --accent-text: #ffffff;
-  --bg-top: #f0f5f2;
-  --hover: #eef0f4;
-  --highlight: #edf4ef;
-  --input-border: #b7c5bd;
-  --focus-glow: #23634b14;
+  --bg: #e8ebe5;
+  --surface: #f8f9f4;
+  --border: #e1e5db;
+  --text: #293e36;
+  --text-muted: #7c847a;
+  --accent: #293e36;
+  --accent-text: #d7ec9b;
+  --bg-top: #f0f2ec;
+  --hover: #eaf0de;
+  --highlight: #eef2e6;
+  --input-border: #c7d0bd;
+  --focus-glow: #819e3814;
   --error: #a12e2e;
-  --overlay: rgb(20 32 26 / 40%);
+  --overlay: rgb(41 62 54 / 40%);
   color-scheme: light;
 
-  --green: #347b59;
-  --green-dark: #3a8a54;
+  --green: #6b884c;
+  --green-dark: #58733d;
   --orange: #bc592a;
   --orange-dark: #cc6a2f;
-  --grey: #707976;
-  --grey-dark: #6f747c;
+  --grey: #7c847a;
+  --grey-dark: #63705e;
 
   --radius: 6px;
-  --shadow: 0 12px 32px rgba(24, 40, 32, 0.1);
+  --shadow: 0 12px 32px rgba(41, 62, 54, 0.1);
 
-  --sans: 'DM Sans', sans-serif;
-  --display: 'Space Grotesk', sans-serif;
+  --sans: 'Inter', "Segoe UI", Arial, sans-serif;
+  --display: 'Inter', "Segoe UI", Arial, sans-serif;
 
   font: 16px/1.45 var(--sans);
   color: var(--text);
@@ -40,21 +40,21 @@
 }
 
 :root[data-theme='dark'] {
-  --bg: #171b19;
-  --bg-top: #202823;
-  --surface: #242b27;
-  --border: #3e4942;
+  --bg: #1c2620;
+  --bg-top: #24312a;
+  --surface: #293e36;
+  --border: #435248;
   --text: #edf1ee;
-  --text-muted: #b0bcb4;
-  --accent: #8bd5ad;
-  --accent-text: #172a1e;
-  --hover: #333d37;
-  --highlight: #2b3d32;
-  --input-border: #596a5e;
-  --focus-glow: #8bd5ad26;
+  --text-muted: #a9b5a5;
+  --accent: #d7ec9b;
+  --accent-text: #293e36;
+  --hover: #33473d;
+  --highlight: #2e4038;
+  --input-border: #4f5f53;
+  --focus-glow: #d7ec9b26;
   --error: #ffa59c;
   --overlay: rgb(0 0 0 / 60%);
-  --grey-dark: #b0bcb4;
+  --grey-dark: #a9b5a5;
   --shadow: 0 12px 32px rgb(0 0 0 / 35%);
   color-scheme: dark;
 }
