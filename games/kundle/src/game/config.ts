@@ -4,7 +4,7 @@
  */
 
 /** Total number of guesses a player gets per day. */
-export const MAX_GUESSES = 6;
+export const MAX_GUESSES = 10;
 
 export const SOPRA_STAFF_THRESHOLDS = {
   orangeMaxDifference: 5,
